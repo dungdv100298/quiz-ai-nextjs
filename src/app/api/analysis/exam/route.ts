@@ -10,10 +10,6 @@ import { generateAISuggestions } from '@/utils/ai-suggestions';
 
 const prisma = new PrismaClient();
 
-export const config = {
-  runtime: 'edge',
-};
-
 export async function POST(request: NextRequest) {
   try {
     const createAnalysisDto: CreateAnalysisDto = await request.json();
