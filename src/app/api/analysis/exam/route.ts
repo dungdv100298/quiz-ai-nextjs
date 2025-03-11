@@ -6,9 +6,15 @@ import {
   AnalysisResultDto,
 } from '@/types/analysis';
 import { calculateTopicAnalysis } from '@/utils/analysis-utils';
-import { generateAISuggestions } from '@/utils/ai-suggestions';
 
-const prisma = new PrismaClient();
+// Khởi tạo Prisma singleton
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+export const prisma =
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: ['query'],
+  });
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 
 export const config = {
   runtime: 'edge',
@@ -32,79 +38,58 @@ export async function POST(request: NextRequest) {
       .filter((topic) => topic.correctPercentage < 50)
       .map((topic) => topic.topic);
 
-    // Generate AI suggestions
-    const aiSuggestions = await generateAISuggestions(
-      createAnalysisDto.subject,
-      createAnalysisDto.score,
-      averageSpeed,
-      timeSpent,
-      strengths,
-      weaknesses,
-      topicAnalysis,
-      createAnalysisDto.language as 'vi' | 'en',
-    );
-
-    // Create analysis result
-    const analysisResult: AnalysisResultDto = {
-      summary: {
-        examName: createAnalysisDto.examContent,
-        subject: createAnalysisDto.subject,
-        score: createAnalysisDto.score,
-        time: createAnalysisDto.time,
-      },
-      detailExamResult: {
-        totalQuestions: createAnalysisDto.totalQuestions,
-        emptyAnswers: createAnalysisDto.emptyAnswers,
-        correctAnswers: createAnalysisDto.correctAnswers,
-        wrongAnswers: createAnalysisDto.wrongAnswers,
-        rating: createAnalysisDto.rating,
-      },
-      topicAnalysis,
-      workingTimeAnalysis: {
-        workingTime: createAnalysisDto.workingTime,
-        averageSpeed,
-        timeSpent,
-      },
-      inputTokens: aiSuggestions.inputTokens,
-      outputTokens: aiSuggestions.outputTokens,
-      totalTokens: aiSuggestions.totalTokens,
-      inputCost: aiSuggestions.inputCost,
-      outputCost: aiSuggestions.outputCost,
-      totalCost: aiSuggestions.totalCost,
-      strengths,
-      weaknesses,
-      improvementSuggestions: aiSuggestions.improvementSuggestions,
-      timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
-      studyMethodSuggestions: aiSuggestions.studyMethodSuggestions,
-      nextExamSuggestions: aiSuggestions.nextExamSuggestions,
-    };
-
-    // Save analysis to database
-    const examAnalysis = await prisma.examAnalysis.create({
+    // Tạo phân tích ban đầu và lưu vào DB không chờ AI
+    const initialAnalysis = await prisma.examAnalysis.create({
       data: {
         examId: createAnalysisDto.examId,
         subject: createAnalysisDto.subject,
         rating: createAnalysisDto.rating,
-        inputTokens: aiSuggestions.inputTokens,
-        outputTokens: aiSuggestions.outputTokens,
-        totalTokens: aiSuggestions.totalTokens,
-        inputCost: aiSuggestions.inputCost,
-        outputCost: aiSuggestions.outputCost,
-        totalCost: aiSuggestions.totalCost,
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        inputCost: 0,
+        outputCost: 0,
+        totalCost: 0,
         totalQuestions: createAnalysisDto.totalQuestions,
         emptyAnswers: createAnalysisDto.emptyAnswers,
         correctAnswers: createAnalysisDto.correctAnswers,
         wrongAnswers: createAnalysisDto.wrongAnswers,
-        questionLabels: createAnalysisDto.questionLabels as any, // JSON type in Prisma
-        analysisResult: analysisResult as any, // JSON type in Prisma
+        questionLabels: createAnalysisDto.questionLabels as any,
+        analysisResult: null,
+        status: 'PROCESSING',
       },
     });
 
-    return NextResponse.json(examAnalysis, { status: 201 });
+    // Trigger AI analysis asynchronously
+    // Gọi một API khác để xử lý phân tích AI (thêm endpoint mới)
+    fetch(`${request.nextUrl.origin}/api/analysis/process-ai`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        analysisId: initialAnalysis.id,
+        subject: createAnalysisDto.subject,
+        score: createAnalysisDto.score,
+        averageSpeed,
+        timeSpent,
+        strengths,
+        weaknesses,
+        topicAnalysis,
+        language: createAnalysisDto.language,
+        // Các thông tin khác cần thiết
+      }),
+    }).catch(err => console.error('Failed to trigger AI analysis:', err));
+
+    return NextResponse.json(
+      { 
+        ...initialAnalysis, 
+        message: 'Analysis started. Results will be available soon.' 
+      }, 
+      { status: 202 }
+    );
   } catch (error) {
     console.error('Error analyzing exam:', error);
     return NextResponse.json(
-      { error: 'Failed to analyze exam' },
+      { error: 'Failed to analyze exam', details: error.message },
       { status: 500 }
     );
   } finally {
