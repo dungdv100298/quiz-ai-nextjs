@@ -9,19 +9,28 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "next": "15.2.1"
+    "@ai-sdk/google": "^1.1.20",
+    "@ai-sdk/react": "^1.1.21",
+    "@prisma/client": "^6.4.1",
+    "ai": "^4.1.54",
+    "next": "15.2.1",
+    "next-swagger-doc": "^0.4.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-react": "^5.20.1"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
+    "@types/swagger-ui-react": "^5.18.0",
     "eslint": "^9",
     "eslint-config-next": "15.2.1",
-    "@eslint/eslintrc": "^3"
+    "prisma": "^6.4.1",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }

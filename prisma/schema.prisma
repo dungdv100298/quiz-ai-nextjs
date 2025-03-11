@@ -1,0 +1,30 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model ExamAnalysis {
+  id              Int      @id @default(autoincrement())
+  examId          String
+  subject         String
+  rating          String
+  inputTokens     Float
+  outputTokens    Float
+  totalTokens     Float
+  inputCost       Float
+  outputCost      Float
+  totalCost       Float
+  totalQuestions  Float
+  emptyAnswers    Float
+  correctAnswers  Float
+  wrongAnswers    Float
+  questionLabels  Json     // Lưu trữ dưới dạng JSON
+  analysisResult  Json     // Lưu trữ AnalysisResultDto dưới dạng JSON
+  createdAt       DateTime @default(now())
+
+  @@map("exam_analysis")
+}
