@@ -14,7 +14,7 @@ export const maxDuration = 60;
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params;
@@ -39,7 +39,7 @@ export async function GET(
         createdAt: 'desc',
       },
     });
-    const historyScore = examAnalysis?.map((item: any) => item.score) || [];
+    const historyScore = examAnalysis?.map((item: any) => item.score as number) || [];
     // Calculate topic analysis
     const topicAnalysis = calculateTopicAnalysis(createAnalysisDto.questionLabels);
     const averageSpeed = createAnalysisDto.time / createAnalysisDto.totalQuestions;
