@@ -12,10 +12,34 @@ const prisma = new PrismaClient();
 
 export const maxDuration = 60;
 
-export async function POST(request: NextRequest) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const createAnalysisDto: CreateAnalysisDto = await request.json();
-    
+    const { id } = await params;
+
+    // Call API https://studio-dev.eduquiz.io.vn/quizexam/api/v1/exam-results/{id}
+    const response = await fetch(
+      `https://studio-dev.eduquiz.io.vn/quizexam/api/v1/exam-results/${id}`
+    );
+    const data = await response.json();
+  
+    const formattedData = formatExamResult(data);
+
+    const createAnalysisDto: CreateAnalysisDto = formattedData;
+
+    // query list history score by userId and examId in  exam_analysis table
+    const examAnalysis = await prisma.examAnalysis.findMany({
+      where: {
+        userId: createAnalysisDto.userId,
+        examId: createAnalysisDto.examId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+    const historyScore = examAnalysis?.map((item: any) => item.score as number) || [];
     // Calculate topic analysis
     const topicAnalysis = calculateTopicAnalysis(createAnalysisDto.questionLabels);
     const averageSpeed = createAnalysisDto.time / createAnalysisDto.totalQuestions;
@@ -39,11 +63,13 @@ export async function POST(request: NextRequest) {
       strengths,
       weaknesses,
       topicAnalysis,
+      historyScore,
       createAnalysisDto.language as 'vi' | 'en',
     );
 
     // Create analysis result
     const analysisResult: AnalysisResultDto = {
+      userId: createAnalysisDto.userId,
       summary: {
         examName: createAnalysisDto.examContent,
         subject: createAnalysisDto.subject,
@@ -75,13 +101,16 @@ export async function POST(request: NextRequest) {
       timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
       studyMethodSuggestions: aiSuggestions.studyMethodSuggestions,
       nextExamSuggestions: aiSuggestions.nextExamSuggestions,
+      historyScoreSuggestions: aiSuggestions.historyScoreSuggestions,
     };
 
     // Save analysis to database
-    const examAnalysis = await prisma.examAnalysis.create({
+    await prisma.examAnalysis.create({
       data: {
         examId: createAnalysisDto.examId,
+        userId: createAnalysisDto.userId,
         subject: createAnalysisDto.subject,
+        score: createAnalysisDto.score,
         rating: createAnalysisDto.rating,
         inputTokens: aiSuggestions.inputTokens,
         outputTokens: aiSuggestions.outputTokens,
@@ -94,11 +123,16 @@ export async function POST(request: NextRequest) {
         correctAnswers: createAnalysisDto.correctAnswers,
         wrongAnswers: createAnalysisDto.wrongAnswers,
         questionLabels: createAnalysisDto.questionLabels as any, // JSON type in Prisma
-        analysisResult: analysisResult as any, // JSON type in Prisma
+        analysisResult: {
+          improvementSuggestions: aiSuggestions.improvementSuggestions,
+          timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
+          studyMethodSuggestions: aiSuggestions.studyMethodSuggestions,
+          nextExamSuggestions: aiSuggestions.nextExamSuggestions,
+        }, // JSON type in Prisma
       },
     });
 
-    return NextResponse.json(examAnalysis, { status: 201 });
+    return NextResponse.json(analysisResult, { status: 201 });
   } catch (error) {
     console.error('Error analyzing exam:', error);
     return NextResponse.json(
@@ -108,4 +142,44 @@ export async function POST(request: NextRequest) {
   } finally {
     await prisma.$disconnect();
   }
+}
+
+function formatExamResult(inputData: any): CreateAnalysisDto {
+  const data = inputData.data;
+  
+  const subject = data?.subject_data?.name || "Chưa xác định";
+  
+  const questionLabels = data.sections.map((section: any) => {
+    const questionNumberMatch = section.question_data.name.match(/Câu\s+(\d+)/i);
+    const questionNumber = questionNumberMatch ? parseInt(questionNumberMatch[1]) : 0;
+    
+    const label = section.question_data.labels && section.question_data.labels.length > 0 
+      ? section.question_data.labels[0].name 
+      : "Không có nhãn";
+    
+    return {
+      questionNumber,
+      label,
+      isCorrect: section.is_correct
+    };
+  });
+  
+  const result: CreateAnalysisDto = {
+    examId: data.exam_id.toString(),
+    userId: data.user_id.toString(),
+    examContent: "Bài kiểm tra",
+    subject: subject,
+    time: data.total_time,
+    workingTime: data.total_time_used,
+    score: data.total_score,
+    rating: data.rank_data ? data.rank_data.name : "Không xếp hạng",
+    totalQuestions: data.total_question,
+    emptyAnswers: data.total_question_blank,
+    correctAnswers: data.total_question_true,
+    wrongAnswers: data.total_question_false,
+    questionLabels: questionLabels,
+    language: "vi"
+  };
+  
+  return result;
 }

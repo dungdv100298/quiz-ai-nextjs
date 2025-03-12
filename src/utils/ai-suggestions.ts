@@ -11,6 +11,7 @@ export async function generateAISuggestions(
   strengths: string[],
   weaknesses: string[],
   topicAnalysis: TopicAnalysis[],
+  historyScore: number[],
   language: 'vi' | 'en' = 'en',
 ): Promise<{
   inputTokens: number;
@@ -23,6 +24,7 @@ export async function generateAISuggestions(
   timeAnalysisSuggestions: string;
   studyMethodSuggestions: string;
   nextExamSuggestions: string;
+  historyScoreSuggestions: string;
 }> {
   try {
     const languageText = language === 'vi' ? 'tiếng Việt' : 'English';
@@ -51,6 +53,7 @@ export async function generateAISuggestions(
       language === 'vi' ? 'Phân tích theo chủ đề' : 'Topic breakdown';
     const correctLabel = language === 'vi' ? 'đúng' : 'correct';
     const questionsLabel = language === 'vi' ? 'câu hỏi' : 'questions';
+    const historyScoreLabel = language === 'vi' ? 'Điểm số các bài kiểm tra trước (theo thứ tự ngày gần nhất đến xa nhất):' : 'Previous exam scores (in order of most recent to oldest):';
 
     const performanceType =
       score < 5
@@ -89,8 +92,10 @@ export async function generateAISuggestions(
       language === 'vi'
         ? '4. Khuyến nghị về loại bài kiểm tra hoặc thực hành nên thử tiếp theo'
         : '4. Recommendations for what type of exam or practice to try next';
+    
+    // Assess improvement from previous exams
+    const improvementFromPreviousExamsLabel = language === 'vi' ? `5. Đánh giá sự tiến bộ từ các bài kiểm tra trước` : `5. Assessment of progress from previous exams`;
 
-    // Thêm hướng dẫn chi tiết cho phân tích thời gian
     const timeAnalysisGuidance =
       language === 'vi'
         ? `Khi phân tích thời gian, hãy xem xét các yếu tố sau:
@@ -111,7 +116,7 @@ export async function generateAISuggestions(
       ${timeSpentLabel}: ${timeSpent.toFixed(1)} ${language === 'vi' ? 'giây' : 'seconds'}
       ${strengthsLabel}: ${strengths.join(', ') || (language === 'vi' ? 'Không có' : 'None')}
       ${weaknessesLabel}: ${weaknesses.join(', ') || (language === 'vi' ? 'Không có' : 'None')}
-      
+      ${historyScore.length > 0 ? historyScoreLabel + historyScore.join(', ') : ''}
       ${topicBreakdownLabel}:
       ${topicAnalysis.map((t) => `- ${t.topic}: ${t.correctPercentage}% ${correctLabel} (${t.questionCount} ${questionsLabel})`).join('\n')}
       
@@ -121,6 +126,7 @@ export async function generateAISuggestions(
       ${timeAnalysisGuidance}
       ${studyMethodSuggestionsLabel}
       ${nextExamSuggestionsLabel}
+      ${historyScore.length > 0 ? improvementFromPreviousExamsLabel : ''}
     `;
     const result = await generateText({
       model: google('gemini-1.5-pro-latest'),
@@ -180,6 +186,7 @@ export async function generateAISuggestions(
       timeAnalysisSuggestions: sections[2]?.trim() || fallbackTimeAnalysis,
       studyMethodSuggestions: sections[3]?.trim() || fallbackStudyMethod,
       nextExamSuggestions: sections[4]?.trim() || fallbackNextExam,
+      historyScoreSuggestions: historyScore.length > 0 ? sections[5]?.trim() : '',
     };
   } catch (error) {
     console.error('Error generating AI suggestions:', error);
@@ -211,6 +218,7 @@ export async function generateAISuggestions(
           'Sử dụng kết hợp sách giáo khoa, hướng dẫn video và bài tập thực hành. Xem xét kỹ lưỡng các lỗi sai để hiểu rõ bạn đã sai ở đâu.',
         nextExamSuggestions:
           'Thử một bài kiểm tra tập trung cụ thể vào các lĩnh vực yếu của bạn để đo lường sự tiến bộ.',
+        historyScoreSuggestions: '',
       };
     } else {
       const timeAnalysisFallback =
@@ -238,6 +246,7 @@ export async function generateAISuggestions(
           'Use a combination of textbooks, video tutorials, and practice problems. Review mistakes carefully to understand where you went wrong.',
         nextExamSuggestions:
           'Try a practice exam that focuses specifically on your weak areas to measure your improvement.',
+        historyScoreSuggestions: '',
       };
     }
   }
