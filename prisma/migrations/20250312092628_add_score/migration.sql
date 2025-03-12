@@ -1,22 +1,11 @@
-/*
-  Warnings:
-
-  - You are about to drop the `ExamAnalysis` table. If the table is not empty, all the data it contains will be lost.
-  - You are about to drop the `User` table. If the table is not empty, all the data it contains will be lost.
-
-*/
--- DropTable
-DROP TABLE `ExamAnalysis`;
-
--- DropTable
-DROP TABLE `User`;
-
 -- CreateTable
 CREATE TABLE `exam_analysis` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
+    `userId` VARCHAR(191) NOT NULL,
     `examId` VARCHAR(191) NOT NULL,
     `subject` VARCHAR(191) NOT NULL,
     `rating` VARCHAR(191) NOT NULL,
+    `score` DOUBLE NOT NULL,
     `inputTokens` DOUBLE NOT NULL,
     `outputTokens` DOUBLE NOT NULL,
     `totalTokens` DOUBLE NOT NULL,

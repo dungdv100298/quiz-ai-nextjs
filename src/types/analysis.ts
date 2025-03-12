@@ -15,6 +15,7 @@ export interface TopicAnalysis {
 
 export interface CreateAnalysisDto {
   examId: string;
+  userId: string;
   subject: string;
   examContent: string;
   score: number;
@@ -30,6 +31,7 @@ export interface CreateAnalysisDto {
 }
 
 export interface AnalysisResultDto {
+  userId: string;
   summary: {
     examName: string;
     subject: string;
@@ -55,6 +57,7 @@ export interface AnalysisResultDto {
   timeAnalysisSuggestions: string;
   studyMethodSuggestions: string;
   nextExamSuggestions: string;
+  historyScoreSuggestions: string;
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
