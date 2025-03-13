@@ -30,8 +30,8 @@ export async function generateAISuggestions(
     const languageText = language === 'vi' ? 'tiếng Việt' : 'English';
     const promptIntro =
       language === 'vi'
-        ? `Với vai trò là trợ lý AI giáo dục, hãy đưa ra các khuyến nghị học tập cá nhân hóa dựa trên phân tích bài kiểm tra sau đây (trả lời bằng ${languageText}):`
-        : `As an educational AI assistant, provide personalized learning recommendations based on the following exam analysis (answer in ${languageText}):`;
+        ? `Với vai trò là trợ lý AI giáo dục, hãy đưa ra các khuyến nghị học tập cá nhân hóa dựa trên phân tích bài kiểm tra sau đây. Trả lời bằng ${languageText} và định dạng JSON chính xác theo cấu trúc được cung cấp:`
+        : `As an educational AI assistant, provide personalized learning recommendations based on the following exam analysis. Answer in ${languageText} and format your response as valid JSON according to the provided structure:`;
 
     const strengthsLabel =
       language === 'vi'
@@ -127,8 +127,25 @@ export async function generateAISuggestions(
       ${studyMethodSuggestionsLabel}
       ${nextExamSuggestionsLabel}
       ${historyScore.length > 0 ? improvementFromPreviousExamsLabel : ''}
+      
+      Vui lòng trả lời theo định dạng JSON với cấu trúc chính xác như sau:
+      {
+        "improvementSuggestions": "Phần này phải là văn bản định dạng Markdown có cấu trúc đẹp với các phần như: ## Điểm mạnh, ## Điểm yếu, ## Đề xuất cải thiện",
+        "timeAnalysisSuggestions": "Phần này cũng nên sử dụng Markdown với headings, danh sách, bold và italic để có định dạng đẹp",
+        "studyMethodSuggestions": "Sử dụng định dạng Markdown với danh sách numbering (1., 2., 3.) hoặc bullet points (- item) rõ ràng",
+        "nextExamSuggestions": "Sử dụng Markdown để tạo danh sách có định dạng rõ ràng về các bước tiếp theo",
+        "historyScoreSuggestions": "Phân tích xu hướng điểm số qua thời gian, sử dụng Markdown để format"
+      }
+      
+      Hãy sử dụng đầy đủ tính năng Markdown như:
+      - Headings (## H2, ### H3)
+      - Danh sách có thứ tự (1. 2. 3.) và không thứ tự (- item)
+      - Nhấn mạnh bằng **bold** và *italic*
+      - Tạo bảng nếu cần thiết
+      - Quotes để nhấn mạnh thông tin quan trọng
+      
+      Đảm bảo rằng đầu ra của bạn là JSON hợp lệ và có thể phân tích cú pháp, với các ký tự đặc biệt của Markdown được escape đúng cách trong chuỗi JSON.
     `;
-    console.log(1111, prompt)
     const result = await generateText({
       model: google('gemini-1.5-pro-latest'),
       prompt,
@@ -136,9 +153,30 @@ export async function generateAISuggestions(
 
     const response = result;
     const text = response.text;
-    console.log(2222, text)
 
-    const sections = text.split(/\d\.\s+/);
+    let parsedResponse;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        parsedResponse = JSON.parse(jsonMatch[0]);
+        console.log(222, parsedResponse)
+      } else {
+        throw new Error("Không tìm thấy JSON hợp lệ trong phản hồi");
+      }
+    } catch (parseError) {
+      console.error('Error parsing JSON response:', parseError);
+      const sections = text.split(/\d\.\s+/);
+      
+      parsedResponse = {
+        improvementSuggestions: sections[1]?.trim() || '',
+        timeAnalysisSuggestions: sections[2]?.trim() || '',
+        studyMethodSuggestions: sections[3]?.trim() || '',
+        nextExamSuggestions: sections[4]?.trim() || '',
+        historyScoreSuggestions: historyScore.length > 0 ? sections[5]?.trim() : '',
+      };
+      console.log(333, parsedResponse)
+
+    }
 
     const countTokens = response.usage.promptTokens || 0;
     const outputTokens = response.usage.completionTokens || 0;
@@ -184,11 +222,11 @@ export async function generateAISuggestions(
       inputCost: inputCost,
       outputCost: outputCost,
       totalCost: totalCost,
-      improvementSuggestions: sections[1]?.trim() || fallbackImprovement,
-      timeAnalysisSuggestions: sections[2]?.trim() || fallbackTimeAnalysis,
-      studyMethodSuggestions: sections[3]?.trim() || fallbackStudyMethod,
-      nextExamSuggestions: sections[4]?.trim() || fallbackNextExam,
-      historyScoreSuggestions: historyScore.length > 0 ? sections[5]?.trim() : '',
+      improvementSuggestions: parsedResponse.improvementSuggestions || fallbackImprovement,
+      timeAnalysisSuggestions: parsedResponse.timeAnalysisSuggestions || fallbackTimeAnalysis,
+      studyMethodSuggestions: parsedResponse.studyMethodSuggestions || fallbackStudyMethod,
+      nextExamSuggestions: parsedResponse.nextExamSuggestions || fallbackNextExam,
+      historyScoreSuggestions: historyScore.length > 0 ? parsedResponse.historyScoreSuggestions || '' : '',
     };
   } catch (error) {
     console.error('Error generating AI suggestions:', error);
