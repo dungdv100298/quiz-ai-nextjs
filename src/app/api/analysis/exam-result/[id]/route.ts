@@ -38,8 +38,8 @@ export async function GET(
       orderBy: {
         createdAt: 'desc',
       },
+      take: 10,
     });
-    console.log('examAnalysis', examAnalysis);
     const historyScore = examAnalysis?.map((item: any) => item.score as number) || [];
     // Calculate topic analysis
     const topicAnalysis = calculateTopicAnalysis(createAnalysisDto.questionLabels);

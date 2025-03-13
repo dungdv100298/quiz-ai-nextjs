@@ -263,15 +263,15 @@ export default function ExamAnalysisPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="bg-indigo-50 p-4 rounded-lg">
                 <p className="text-sm text-indigo-800">Tổng thời gian làm bài</p>
-                <p className="text-xl font-bold">{analysisResult.workingTimeAnalysis.workingTime} phút</p>
+                <p className="text-xl font-bold">{analysisResult.workingTimeAnalysis.workingTime} giây</p>
               </div>
               <div className="bg-indigo-50 p-4 rounded-lg">
                 <p className="text-sm text-indigo-800">Tốc độ trung bình</p>
-                <p className="text-xl font-bold">{analysisResult.workingTimeAnalysis.averageSpeed.toFixed(2)} phút/câu</p>
+                <p className="text-xl font-bold">{analysisResult.workingTimeAnalysis.averageSpeed.toFixed(2)} giây/câu</p>
               </div>
               <div className="bg-indigo-50 p-4 rounded-lg">
                 <p className="text-sm text-indigo-800">Thời gian dành cho một câu</p>
-                <p className="text-xl font-bold">{analysisResult.workingTimeAnalysis.timeSpent.toFixed(2)} phút</p>
+                <p className="text-xl font-bold">{analysisResult.workingTimeAnalysis.timeSpent.toFixed(2)} giây</p>
               </div>
             </div>
           </div>
