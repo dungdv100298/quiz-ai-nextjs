@@ -58,6 +58,8 @@ export interface AnalysisResultDto {
   studyMethodSuggestions: string;
   nextExamSuggestions: string;
   historyScoreSuggestions: string;
+  historyWorkingTimeSuggestions: string;
+  historyQuestionLabels: string;
   inputTokens: number;
   outputTokens: number;
   totalTokens: number;
