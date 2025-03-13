@@ -128,6 +128,7 @@ export async function generateAISuggestions(
       ${nextExamSuggestionsLabel}
       ${historyScore.length > 0 ? improvementFromPreviousExamsLabel : ''}
     `;
+    console.log(1111, prompt)
     const result = await generateText({
       model: google('gemini-1.5-pro-latest'),
       prompt,
@@ -135,6 +136,7 @@ export async function generateAISuggestions(
 
     const response = result;
     const text = response.text;
+    console.log(2222, text)
 
     const sections = text.split(/\d\.\s+/);
 
