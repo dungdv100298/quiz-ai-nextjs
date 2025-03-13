@@ -14,6 +14,7 @@ model ExamAnalysis {
   subject         String
   rating          String
   score           Float
+  workingTime     Int      @default(0)
   inputTokens     Float
   outputTokens    Float
   totalTokens     Float
@@ -25,6 +26,7 @@ model ExamAnalysis {
   correctAnswers  Float
   wrongAnswers    Float
   questionLabels  Json     // Lưu trữ dưới dạng JSON
+  topicAnalysis   Json     // Lưu trữ dưới dạng JSON
   analysisResult  Json     // Lưu trữ AnalysisResultDto dưới dạng JSON
   createdAt       DateTime @default(now())
 

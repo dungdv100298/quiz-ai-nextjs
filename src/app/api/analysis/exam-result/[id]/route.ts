@@ -38,9 +38,11 @@ export async function GET(
       orderBy: {
         createdAt: 'desc',
       },
-      take: 10,
+      take: 5,
     });
     const historyScore = examAnalysis?.map((item: any) => item.score as number) || [];
+    const historyWorkingTime = examAnalysis?.map((item: any) => item.workingTime as number) || [];
+    const historyQuestionLabels = getHistoryQuestionLabels(examAnalysis);
     // Calculate topic analysis
     const topicAnalysis = calculateTopicAnalysis(createAnalysisDto.questionLabels);
     const averageSpeed = createAnalysisDto.time / createAnalysisDto.totalQuestions;
@@ -65,7 +67,8 @@ export async function GET(
       weaknesses,
       topicAnalysis,
       historyScore,
-      createAnalysisDto.language as 'vi' | 'en',
+      historyWorkingTime,
+      historyQuestionLabels,
     );
 
     // Create analysis result
@@ -102,7 +105,9 @@ export async function GET(
       timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
       studyMethodSuggestions: aiSuggestions.studyMethodSuggestions,
       nextExamSuggestions: aiSuggestions.nextExamSuggestions,
-      historyScoreSuggestions: aiSuggestions.historyScoreSuggestions,
+      historyScoreSuggestions: historyScore.length > 0 ? aiSuggestions.historyScoreSuggestions : '',
+      historyWorkingTimeSuggestions: historyWorkingTime.length > 0 ? aiSuggestions.historyWorkingTimeSuggestions : '',
+      historyQuestionLabels: historyQuestionLabels.length > 0 ? aiSuggestions.historyQuestionLabels : '',
     };
 
     // Save analysis to database
@@ -112,6 +117,7 @@ export async function GET(
         userId: createAnalysisDto.userId,
         subject: createAnalysisDto.subject,
         score: createAnalysisDto.score,
+        workingTime: createAnalysisDto.workingTime,
         rating: createAnalysisDto.rating,
         inputTokens: aiSuggestions.inputTokens,
         outputTokens: aiSuggestions.outputTokens,
@@ -124,11 +130,15 @@ export async function GET(
         correctAnswers: createAnalysisDto.correctAnswers,
         wrongAnswers: createAnalysisDto.wrongAnswers,
         questionLabels: createAnalysisDto.questionLabels as any, // JSON type in Prisma
+        topicAnalysis: topicAnalysis as any, // JSON type in Prisma
         analysisResult: {
           improvementSuggestions: aiSuggestions.improvementSuggestions,
           timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
           studyMethodSuggestions: aiSuggestions.studyMethodSuggestions,
           nextExamSuggestions: aiSuggestions.nextExamSuggestions,
+          historyScoreSuggestions: historyScore.length > 0 ? aiSuggestions.historyScoreSuggestions : '',
+          historyWorkingTimeSuggestions: historyWorkingTime.length > 0 ? aiSuggestions.historyWorkingTimeSuggestions : '',
+          historyQuestionLabels: historyQuestionLabels.length > 0 ? aiSuggestions.historyQuestionLabels : '',
         }, // JSON type in Prisma
       },
     });
@@ -142,6 +152,22 @@ export async function GET(
     );
   } finally {
     await prisma.$disconnect();
+  }
+}
+
+function getHistoryQuestionLabels(examAnalysis: any) {
+  try {
+    return examAnalysis?.map((item: any) => {
+      const text = item.topicAnalysis.map((topic: any) =>  {
+        return {
+          topic: topic.topic,
+          correctPercentage: topic.correctPercentage,
+        }
+      }) as any
+      return text;
+    }) || [];
+  } catch {
+    return [];
   }
 }
 
@@ -178,8 +204,7 @@ function formatExamResult(inputData: any): CreateAnalysisDto {
     emptyAnswers: data.total_question_blank,
     correctAnswers: data.total_question_true,
     wrongAnswers: data.total_question_false,
-    questionLabels: questionLabels,
-    language: "vi"
+    questionLabels: questionLabels
   };
   
   return result;

@@ -32,8 +32,8 @@ export function calculateTopicAnalysis(questionLabels: QuestionLabel[]): TopicAn
     (stats) => {
       return {
         ...stats,
-        correctPercentage: (stats.correctCount / stats.questionCount) * 100,
-        incorrectPercentage: (stats.wrongCount / stats.questionCount) * 100,
+        correctPercentage: ((stats.correctCount / stats.questionCount) * 100).toFixed(2),
+        incorrectPercentage: ((stats.wrongCount / stats.questionCount) * 100).toFixed(2),
       };
     },
   );
