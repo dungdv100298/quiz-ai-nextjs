@@ -3,6 +3,8 @@ CREATE TABLE `exam_analysis` (
     `id` INTEGER NOT NULL AUTO_INCREMENT,
     `userId` VARCHAR(191) NOT NULL,
     `examId` VARCHAR(191) NOT NULL,
+    `examName` VARCHAR(191) NOT NULL,
+    `subjectId` VARCHAR(191) NOT NULL,
     `subject` VARCHAR(191) NOT NULL,
     `rating` VARCHAR(191) NOT NULL,
     `score` DOUBLE NOT NULL,
