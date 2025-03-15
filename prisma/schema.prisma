@@ -11,6 +11,8 @@ model ExamAnalysis {
   id              Int      @id @default(autoincrement())
   userId          String
   examId          String
+  examName        String
+  subjectId       String
   subject         String
   rating          String
   score           Float

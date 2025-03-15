@@ -17,7 +17,8 @@ export interface CreateAnalysisDto {
   examId: string;
   userId: string;
   subject: string;
-  examContent: string;
+  subjectId: string;
+  examName: string;
   score: number;
   time: number;
   totalQuestions: number;

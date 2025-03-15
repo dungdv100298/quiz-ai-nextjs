@@ -12,6 +12,7 @@ const prisma = new PrismaClient();
 
 export const maxDuration = 60;
 
+// URL: /api/analysis/exam-result/[id]
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,7 +22,7 @@ export async function GET(
 
     // Call API https://studio-dev.eduquiz.io.vn/quizexam/api/v1/exam-results/{id}
     const response = await fetch(
-      `https://studio-dev.eduquiz.io.vn/quizexam/api/v1/exam-results/${id}`
+      `${process.env.NEXT_PUBLIC_EDUQUIZ_API_URL}/quizexam/api/v1/exam-results/${id}`
     );
     const data = await response.json();
   
@@ -75,7 +76,7 @@ export async function GET(
     const analysisResult: AnalysisResultDto = {
       userId: createAnalysisDto.userId,
       summary: {
-        examName: createAnalysisDto.examContent,
+        examName: createAnalysisDto.examName,
         subject: createAnalysisDto.subject,
         score: createAnalysisDto.score,
         time: createAnalysisDto.time,
@@ -115,7 +116,9 @@ export async function GET(
       data: {
         examId: createAnalysisDto.examId,
         userId: createAnalysisDto.userId,
+        subjectId: createAnalysisDto.subjectId,
         subject: createAnalysisDto.subject,
+        examName: createAnalysisDto.examName,
         score: createAnalysisDto.score,
         workingTime: createAnalysisDto.workingTime,
         rating: createAnalysisDto.rating,
@@ -174,8 +177,6 @@ function getHistoryQuestionLabels(examAnalysis: any) {
 function formatExamResult(inputData: any): CreateAnalysisDto {
   const data = inputData.data;
   
-  const subject = data?.subject_data?.name || "Chưa xác định";
-  
   const questionLabels = data.sections.map((section: any) => {
     const questionNumberMatch = section.question_data.name.match(/Câu\s+(\d+)/i);
     const questionNumber = questionNumberMatch ? parseInt(questionNumberMatch[1]) : 0;
@@ -194,8 +195,9 @@ function formatExamResult(inputData: any): CreateAnalysisDto {
   const result: CreateAnalysisDto = {
     examId: data.exam_id.toString(),
     userId: data.user_id.toString(),
-    examContent: "Bài kiểm tra",
-    subject: subject,
+    examName: data.exam.name,
+    subject: data?.subject_data?.name || "Chưa xác định",
+    subjectId: data?.subject_data?.id ? String(data?.subject_data?.id) : "",
     time: data.total_time,
     workingTime: data.total_time_used,
     score: data.total_score,
