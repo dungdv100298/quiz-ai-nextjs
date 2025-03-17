@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { 
-  CreateAnalysisDto, 
+import { NextRequest, NextResponse } from "next/server";
+import { PrismaClient } from "@prisma/client";
+import {
+  CreateAnalysisDto,
   AnalysisResultDto,
-} from '@/types/analysis';
-import { calculateTopicAnalysis } from '@/utils/analysis-utils';
-import { generateAISuggestions } from '@/utils/ai-suggestions';
+  QuestionLabel,
+} from "@/types/analysis";
+import { calculateTopicAnalysis } from "@/utils/analysis-utils";
+import { generateAISuggestions } from "@/utils/ai-suggestions";
 
 const prisma = new PrismaClient();
 
@@ -25,7 +26,7 @@ export async function GET(
       `${process.env.NEXT_PUBLIC_EDUQUIZ_API_URL}/quizexam/api/v1/exam-results/${id}`
     );
     const data = await response.json();
-  
+
     const formattedData = formatExamResult(data);
 
     const createAnalysisDto: CreateAnalysisDto = formattedData;
@@ -37,17 +38,23 @@ export async function GET(
         examId: createAnalysisDto.examId,
       },
       orderBy: {
-        createdAt: 'desc',
+        createdAt: "desc",
       },
       take: 5,
     });
-    const historyScore = examAnalysis?.map((item: any) => item.score as number) || [];
-    const historyWorkingTime = examAnalysis?.map((item: any) => item.workingTime as number) || [];
+    const historyScore =
+      examAnalysis?.map((item: any) => item.score as number) || [];
+    const historyWorkingTime =
+      examAnalysis?.map((item: any) => item.workingTime as number) || [];
     const historyQuestionLabels = getHistoryQuestionLabels(examAnalysis);
     // Calculate topic analysis
-    const topicAnalysis = calculateTopicAnalysis(createAnalysisDto.questionLabels);
-    const averageSpeed = createAnalysisDto.time / createAnalysisDto.totalQuestions;
-    const timeSpent = createAnalysisDto.workingTime / createAnalysisDto.totalQuestions;
+    const topicAnalysis = calculateTopicAnalysis(
+      createAnalysisDto.questionLabels
+    );
+    const averageSpeed =
+      createAnalysisDto.time / createAnalysisDto.totalQuestions;
+    const timeSpent =
+      createAnalysisDto.workingTime / createAnalysisDto.totalQuestions;
 
     // Identify strengths and weaknesses
     const strengths = topicAnalysis
@@ -69,7 +76,7 @@ export async function GET(
       topicAnalysis,
       historyScore,
       historyWorkingTime,
-      historyQuestionLabels,
+      historyQuestionLabels
     );
 
     // Create analysis result
@@ -106,9 +113,16 @@ export async function GET(
       timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
       studyMethodSuggestions: aiSuggestions.studyMethodSuggestions,
       nextExamSuggestions: aiSuggestions.nextExamSuggestions,
-      historyScoreSuggestions: historyScore.length > 0 ? aiSuggestions.historyScoreSuggestions : '',
-      historyWorkingTimeSuggestions: historyWorkingTime.length > 0 ? aiSuggestions.historyWorkingTimeSuggestions : '',
-      historyQuestionLabels: historyQuestionLabels.length > 0 ? aiSuggestions.historyQuestionLabels : '',
+      historyScoreSuggestions:
+        historyScore.length > 0 ? aiSuggestions.historyScoreSuggestions : "",
+      historyWorkingTimeSuggestions:
+        historyWorkingTime.length > 0
+          ? aiSuggestions.historyWorkingTimeSuggestions
+          : "",
+      historyQuestionLabels:
+        historyQuestionLabels.length > 0
+          ? aiSuggestions.historyQuestionLabels
+          : "",
     };
 
     // Save analysis to database
@@ -139,18 +153,27 @@ export async function GET(
           timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
           studyMethodSuggestions: aiSuggestions.studyMethodSuggestions,
           nextExamSuggestions: aiSuggestions.nextExamSuggestions,
-          historyScoreSuggestions: historyScore.length > 0 ? aiSuggestions.historyScoreSuggestions : '',
-          historyWorkingTimeSuggestions: historyWorkingTime.length > 0 ? aiSuggestions.historyWorkingTimeSuggestions : '',
-          historyQuestionLabels: historyQuestionLabels.length > 0 ? aiSuggestions.historyQuestionLabels : '',
+          historyScoreSuggestions:
+            historyScore.length > 0
+              ? aiSuggestions.historyScoreSuggestions
+              : "",
+          historyWorkingTimeSuggestions:
+            historyWorkingTime.length > 0
+              ? aiSuggestions.historyWorkingTimeSuggestions
+              : "",
+          historyQuestionLabels:
+            historyQuestionLabels.length > 0
+              ? aiSuggestions.historyQuestionLabels
+              : "",
         }, // JSON type in Prisma
       },
     });
 
     return NextResponse.json(analysisResult, { status: 201 });
   } catch (error) {
-    console.error('Error analyzing exam:', error);
+    console.error("Error analyzing exam:", error);
     return NextResponse.json(
-      { error: 'Failed to analyze exam' },
+      { error: "Failed to analyze exam" },
       { status: 500 }
     );
   } finally {
@@ -160,15 +183,17 @@ export async function GET(
 
 function getHistoryQuestionLabels(examAnalysis: any) {
   try {
-    return examAnalysis?.map((item: any) => {
-      const text = item.topicAnalysis.map((topic: any) =>  {
-        return {
-          topic: topic.topic,
-          correctPercentage: topic.correctPercentage,
-        }
-      }) as any
-      return text;
-    }) || [];
+    return (
+      examAnalysis?.map((item: any) => {
+        const text = item.topicAnalysis.map((topic: any) => {
+          return {
+            topic: topic.topic,
+            correctPercentage: topic.correctPercentage,
+          };
+        }) as any;
+        return text;
+      }) || []
+    );
   } catch {
     return [];
   }
@@ -176,22 +201,9 @@ function getHistoryQuestionLabels(examAnalysis: any) {
 
 function formatExamResult(inputData: any): CreateAnalysisDto {
   const data = inputData.data;
-  
-  const questionLabels = data.sections.map((section: any) => {
-    const questionNumberMatch = section.question_data.name.match(/Câu\s+(\d+)/i);
-    const questionNumber = questionNumberMatch ? parseInt(questionNumberMatch[1]) : 0;
-    
-    const label = section.question_data.labels && section.question_data.labels.length > 0 
-      ? section.question_data.labels[0].name 
-      : "Không có nhãn";
-    
-    return {
-      questionNumber,
-      label,
-      isCorrect: section.is_correct
-    };
-  });
-  
+
+  const questionLabels: QuestionLabel[] = processQuestions(data.sections);
+
   const result: CreateAnalysisDto = {
     examId: data.exam_id.toString(),
     userId: data.user_id.toString(),
@@ -206,8 +218,56 @@ function formatExamResult(inputData: any): CreateAnalysisDto {
     emptyAnswers: data.total_question_blank,
     correctAnswers: data.total_question_true,
     wrongAnswers: data.total_question_false,
-    questionLabels: questionLabels
+    questionLabels: questionLabels,
   };
-  
   return result;
+}
+
+function processQuestions(sections: any): QuestionLabel[] {
+  const labelsMap = new Map<number, string[]>();
+
+  sections.forEach((section: any) => {
+    if (
+      section.question_data.labels &&
+      section.question_data.labels.length > 0
+    ) {
+      const labels = section.question_data.labels.map((label: any) => label.name);
+      labelsMap.set(section.question_id, labels);
+    }
+  });
+
+  return sections
+    .filter((section: any) => {
+      const hasChildren =
+        section.question_data.children_questions !== undefined &&
+        section.question_data.children_questions !== null;
+
+      const childrenCount = hasChildren
+        ? section.question_data.children_questions!.length
+        : 0;
+
+      return !hasChildren || childrenCount <= 1;
+    })
+    .map((section: any) => {
+      const id = section.question_data.id;
+
+      let labels: string[] = [];
+
+      if (
+        section.question_data.labels &&
+        section.question_data.labels.length > 0
+      ) {
+        labels = section.question_data.labels.map((label: any) => label.name);
+      } else if (section.parent_id !== 0 && labelsMap.has(section.parent_id)) {
+        labels = labelsMap.get(section.parent_id) || [];
+      }
+
+      const isCorrect = section.is_correct;
+
+      return {
+        id,
+        labels,
+        isCorrect,
+      };
+    });
 }
