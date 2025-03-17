@@ -1,6 +1,6 @@
 export interface QuestionLabel {
   id: number;
-  label: string;
+  labels: string[];
   isCorrect: boolean;
 }
 

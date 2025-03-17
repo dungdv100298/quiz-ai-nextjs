@@ -13,6 +13,7 @@ export async function generateAISuggestions(
   historyScore: number[],
   historyWorkingTime: number[],
   historyQuestionLabels: { topic: string; correctPercentage: number }[][],
+  language: "vi" | "en" = "vi"
 ): Promise<{
   inputTokens: number;
   outputTokens: number;
@@ -29,9 +30,21 @@ export async function generateAISuggestions(
   historyQuestionLabels: string;
 }> {
   try {
-    const prompt = getPrompt(subject, score, averageSpeed, timeSpent, strengths, weaknesses, topicAnalysis, historyScore, historyWorkingTime, historyQuestionLabels);
+    const prompt = getPrompt(
+      subject,
+      score,
+      averageSpeed,
+      timeSpent,
+      strengths,
+      weaknesses,
+      topicAnalysis,
+      historyScore,
+      historyWorkingTime,
+      historyQuestionLabels,
+      language
+    );
     const result = await generateText({
-      model: google("gemini-1.5-pro-latest"),
+      model: google(process.env.NEXT_PUBLIC_MODEL_NAME || "gemini-1.5-pro-latest"),
       prompt,
     });
 
@@ -126,9 +139,11 @@ const getPrompt = (
   topicAnalysis: TopicAnalysis[],
   historyScore: number[],
   historyWorkingTime: number[],
-  historyQuestionLabels: { topic: string; correctPercentage: number }[][]
+  historyQuestionLabels: { topic: string; correctPercentage: number }[][],
+  language: "vi" | "en" = "vi"
 ): string => {
-  const prompt = `
+  if (language === "vi") {
+    const promptVi = `
     Vai trò: Bạn là một trợ lý AI giáo dục, phân tích bài kiểm tra để đưa ra khuyến nghị học tập cá nhân hóa.
 
     Yêu cầu:
@@ -144,16 +159,24 @@ const getPrompt = (
       Tốc độ trung bình của bạn: ${timeSpent} giây
       Điểm mạnh: ${strengths.join(", ")}
       Điểm yếu: ${weaknesses.join(", ")}
-      Danh sách chủ đề và phần trăm đúng: ${topicAnalysis.map((t) => `${t.topic} ${t.correctPercentage}%`).join(", ")}
-      Điểm số trước đó: ${historyScore.length > 0 ? historyScore.join(", ") : "Không có"}
-      Thời gian làm bài trước đó: ${historyWorkingTime.length > 0 ? historyWorkingTime.join(", ") : "Không có"}
+      Danh sách chủ đề và phần trăm đúng: ${topicAnalysis
+        .map((t) => `${t.topic} ${t.correctPercentage}%`)
+        .join(", ")}
+      Điểm số trước đó: ${
+        historyScore.length > 0 ? historyScore.join(", ") : "Không có"
+      }
+      Thời gian làm bài trước đó: ${
+        historyWorkingTime.length > 0
+          ? historyWorkingTime.join(", ")
+          : "Không có"
+      }
       Danh sách chủ đề và phần trăm đúng trước đó (theo từng bài kiểm tra từ gần đây nhất đến xa nhất): ${historyQuestionLabels
         .map(
           (examTopics, examIndex) =>
             `   - Bài kiểm tra ${
               historyQuestionLabels.length - examIndex
             }: ${examTopics
-              .map(topic => `${topic.topic} ${topic.correctPercentage}%`)
+              .map((topic) => `${topic.topic} ${topic.correctPercentage}%`)
               .join(", ")}`
         )
         .join("\n")}
@@ -189,5 +212,70 @@ const getPrompt = (
     Escape ký tự Markdown đúng cách để JSON hợp lệ
     Đảm bảo JSON có thể phân tích cú pháp (parse) mà không lỗi
   `;
-  return prompt;
+    return promptVi;
+  } else {
+    const promptEn = `
+    Role: You are an AI education assistant, analyzing test results to provide personalized learning recommendations.
+
+    Requirements:
+
+    Language: English
+    Format: Valid JSON in the following structure
+    Markdown: Use to clarify content
+    Input data:
+
+    Subject: ${subject}
+    Total score: ${score}/10
+    Average speed of the test: ${averageSpeed} seconds/question
+    Average speed of you: ${timeSpent} seconds
+    Strengths: ${strengths.join(", ")}
+    Weaknesses: ${weaknesses.join(", ")}
+    Topic analysis: ${topicAnalysis
+      .map((t) => `${t.topic} ${t.correctPercentage}%`)
+      .join(", ")}
+    Previous scores: ${
+      historyScore.length > 0 ? historyScore.join(", ") : "No previous scores"
+    }
+    Previous working times: ${
+      historyWorkingTime.length > 0
+        ? historyWorkingTime.join(", ")
+        : "No previous working times"
+    }
+    Previous topic analysis: ${
+      historyQuestionLabels.length > 0
+        ? historyQuestionLabels.join(", ")
+        : "No previous topic analysis"
+    }
+
+    Recommendations needed:
+
+    1. Improve score (Suggestions for materials, exercises, courses)
+    2. Time analysis
+    Speed & accuracy
+    Change trend between tests
+    
+    JSON output format:
+    {
+      "improvementSuggestions": "## Strengths\n...\n## Weaknesses\n...\n## Improvement suggestions\n...",
+      "timeAnalysisSuggestions": "## Time analysis\n...",
+      "studyMethodSuggestions": "- Method 1\n- Method 2\n...",
+      "nextExamSuggestions": "## Next exam\n...",
+      "historyScoreSuggestions": "## Score trend\n...",
+      "historyWorkingTimeSuggestions": "## Working time trend\n...",
+      "historyQuestionLabels": "- Topic: Geometry 66.66% current compared to previous tests has increased sharply, specifically answering correctly more,...........v.v \n- Topic: Algebra 10% current compared to previous tests has decreased, specifically answering correctly less,...........v.v"
+    }
+    Markdown requirements:
+
+    Headings (##, ###)
+    Lists (numbered, bullet points)
+    Emphasis (bold, italic)
+    Tables if needed
+    Quotes to highlight important content
+    Note:
+
+    Escape Markdown characters correctly to ensure valid JSON
+    Ensure JSON can be parsed without errors
+    `;
+    return promptEn;
+  }
 };
