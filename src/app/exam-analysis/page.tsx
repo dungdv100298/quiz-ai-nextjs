@@ -365,32 +365,6 @@ export default function ExamAnalysisPage() {
               textColorClass="text-yellow-800"
             />
 
-            {analysisResult.historyScoreSuggestions && (
-              <AnalysisSection
-                title="Phân tích lịch sử điểm số"
-                content={analysisResult.historyScoreSuggestions}
-                bgColorClass="bg-indigo-50"
-                textColorClass="text-indigo-800"
-              />
-            )}
-
-            {analysisResult.historyQuestionLabels && (
-              <AnalysisSection
-                title="Phân tích lịch sử các chủ đề"
-                content={analysisResult.historyQuestionLabels}
-                bgColorClass="bg-indigo-50"
-                textColorClass="text-indigo-800"
-              />
-            )}
-
-            {analysisResult.historyScoreSuggestions && (
-              <AnalysisSection
-                title="Phân tích lịch sử thời gian"
-                content={analysisResult.historyWorkingTimeSuggestions}
-                bgColorClass="bg-indigo-50"
-                textColorClass="text-indigo-800"
-              />
-            )}
           </div>
         </div>
       )}
