@@ -31,6 +31,7 @@ export async function generateAISuggestions(
   historyScore: number[],
   historyWorkingTime: number[],
   historyQuestionLabels: { topic: string; correctPercentage: number }[][],
+  unfinishedExams: Array<{ id: string; name: string; subject?: string }> = [],
   language: "vi" | "en" = "vi"
 ): Promise<{
   inputTokens: number;
@@ -57,6 +58,7 @@ export async function generateAISuggestions(
       historyScore,
       historyWorkingTime,
       historyQuestionLabels,
+      unfinishedExams,
       language
     );
     const result = await generateText({
@@ -125,11 +127,15 @@ const getPrompt = (
   historyScore: number[],
   historyWorkingTime: number[],
   historyQuestionLabels: { topic: string; correctPercentage: number }[][],
+  unfinishedExams: Array<{ id: string; name: string; subject?: string }> = [],
   language: "vi" | "en" = "vi"
 ): string => {
   const timeDifference = timeSpent - averageSpeed;
   const timeDifferencePercentage = ((timeDifference / averageSpeed) * 100).toFixed(2);
   const timeDifferencePercentageAbs = Math.abs(Number(timeDifferencePercentage));
+  const unfinishedExamsFormatted = unfinishedExams.length > 0 
+    ? unfinishedExams.map(exam => `${exam.name}${exam.subject ? ` (${exam.subject})` : ''}`).join(", ")
+    : "Không có";
 
   if (language === "vi") {
     const promptVi = `
@@ -145,7 +151,7 @@ const getPrompt = (
       Điểm yếu: ${weaknesses.join(", ")}
       Tổng số chủ đề yếu: ${weaknesses.length}
       Nguồn học tập và thực hành: 'EduQuiz Study'
-      Đề thi có những chủ đề tương tự: Không có
+      Đề thi có những chủ đề tương tự: ${unfinishedExamsFormatted}
       Chủ đề và % đúng: ${topicAnalysis
         .map((t) => `${t.topic} ${t.correctPercentage}%`)
         .join(", ")}
@@ -195,7 +201,7 @@ const getPrompt = (
     - timeAnalysisSuggestions:
       * NẾU có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): Phân tích xu hướng điểm số và thời gian trung bình.
       * NẾU KHÔNG có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): đưa ra % chênh lệch thời gian từ input ( nhanh hay chập không đưa ra dữ liệu input), liệt kê chủ đề yếu xong nhận xét
-    - nextExamSuggestions: Gợi ý luyện thêm các bài thi có chủ đề tương tự lấy từ input và nguồn từ in put (không liệt kê ngoài input)
+    - nextExamSuggestions: Gợi ý luyện thêm các bài thi có chủ đề tương tự lấy từ input và nguồn từ input (không liệt kê ngoài input)
     - strengthsAnalysis:
       * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề mạnh và so sánh khác biệt về thời gian và % đúng với các lần thi trước ĐƯA RA CHỨNG CỨ CỤ THỂ THỐNG KÊ, TUYỆT ĐỐI KHÔNG LIỆT KÊ QUÁ 3 CHỦ ĐỀ MẠNH.
       * NẾU KHÔNG có lịch sử chủ đề trước: Nhận xét điểm mạnh (highlight chủ đề mạnh) TUYỆT ĐỐI KHÔNG LIỆT KÊ QUÁ 3 CHỦ ĐỀ MẠNH.
@@ -221,6 +227,7 @@ const getPrompt = (
     Average speed of you: ${timeSpent} seconds
     Strengths: ${strengths.join(", ")}
     Weaknesses: ${weaknesses.join(", ")}
+    Unfinished exams: ${unfinishedExamsFormatted}
     Topic analysis: ${topicAnalysis
       .map((t) => `${t.topic} ${t.correctPercentage}%`)
       .join(", ")}

@@ -350,13 +350,6 @@ export default function ExamAnalysisPage() {
               bgColorClass="bg-green-50"
               textColorClass="text-green-800"
             />
-{/* 
-            <AnalysisSection
-              title="Phương pháp học tập"
-              content={analysisResult.studyMethodSuggestions}
-              bgColorClass="bg-green-50"
-              textColorClass="text-green-800"
-            /> */}
 
             <AnalysisSection
               title="Gợi ý cho bài thi tiếp theo"
