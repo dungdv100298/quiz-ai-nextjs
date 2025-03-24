@@ -2,6 +2,24 @@ import { TopicAnalysis } from "@/types/analysis";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 
+const RESPONSE_DEFAULT = {
+  inputTokens: 0, 
+  outputTokens: 0,
+  totalTokens: 0,
+  inputCost: 0,
+  outputCost: 0,
+  totalCost: 0,
+  strengthsAnalysis: "",
+  weaknessesAnalysis: "",
+  improvementSuggestions: "",
+  timeAnalysisSuggestions: "",
+  studyMethodSuggestions: "",
+  nextExamSuggestions: "",
+  historyScoreSuggestions: "",
+  historyWorkingTimeSuggestions: "",
+  historyQuestionLabels: "",
+};
+
 export async function generateAISuggestions(
   subject: string,
   score: number,
@@ -21,13 +39,11 @@ export async function generateAISuggestions(
   inputCost: number;
   outputCost: number;
   totalCost: number;
+  strengthsAnalysis: string;
+  weaknessesAnalysis: string;
   improvementSuggestions: string;
   timeAnalysisSuggestions: string;
-  studyMethodSuggestions: string;
   nextExamSuggestions: string;
-  historyScoreSuggestions: string;
-  historyWorkingTimeSuggestions: string;
-  historyQuestionLabels: string;
 }> {
   try {
     const prompt = getPrompt(
@@ -50,7 +66,6 @@ export async function generateAISuggestions(
 
     const response = result;
     const text = response.text;
-
     let parsedResponse;
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -64,16 +79,11 @@ export async function generateAISuggestions(
       const sections = text.split(/\d\.\s+/);
 
       parsedResponse = {
-        improvementSuggestions: sections[1]?.trim() || "",
-        timeAnalysisSuggestions: sections[2]?.trim() || "",
-        studyMethodSuggestions: sections[3]?.trim() || "",
-        nextExamSuggestions: sections[4]?.trim() || "",
-        historyScoreSuggestions:
-          historyScore.length > 0 ? sections[5]?.trim() : "",
-        historyWorkingTimeSuggestions:
-          historyWorkingTime.length > 0 ? sections[6]?.trim() : "",
-        historyQuestionLabels:
-          historyQuestionLabels.length > 0 ? sections[7]?.trim() : "",
+        strengthsAnalysis: sections[1]?.trim() || "",
+        weaknessesAnalysis: sections[2]?.trim() || "",
+        improvementSuggestions: sections[3]?.trim() || "",
+        timeAnalysisSuggestions: sections[4]?.trim() || "",
+        nextExamSuggestions: sections[5]?.trim() || "",
       };
     }
 
@@ -92,40 +102,15 @@ export async function generateAISuggestions(
       inputCost: inputCost,
       outputCost: outputCost,
       totalCost: totalCost,
+      strengthsAnalysis: parsedResponse.strengthsAnalysis || "",
+      weaknessesAnalysis: parsedResponse.weaknessesAnalysis || "",
       improvementSuggestions: parsedResponse.improvementSuggestions || "",
       timeAnalysisSuggestions: parsedResponse.timeAnalysisSuggestions || "",
-      studyMethodSuggestions: parsedResponse.studyMethodSuggestions || "",
       nextExamSuggestions: parsedResponse.nextExamSuggestions || "",
-      historyScoreSuggestions:
-        historyScore.length > 0
-          ? parsedResponse.historyScoreSuggestions || ""
-          : "",
-      historyWorkingTimeSuggestions:
-        historyWorkingTime.length > 0
-          ? parsedResponse.historyWorkingTimeSuggestions || ""
-          : "",
-      historyQuestionLabels:
-        historyQuestionLabels.length > 0
-          ? parsedResponse.historyQuestionLabels || ""
-          : "",
     };
   } catch (error) {
     console.error("Error generating AI suggestions:", error);
-    return {
-      inputTokens: 0,
-      outputTokens: 0,
-      totalTokens: 0,
-      inputCost: 0,
-      outputCost: 0,
-      totalCost: 0,
-      improvementSuggestions: "",
-      timeAnalysisSuggestions: "",
-      studyMethodSuggestions: "",
-      nextExamSuggestions: "",
-      historyScoreSuggestions: "",
-      historyWorkingTimeSuggestions: "",
-      historyQuestionLabels: "",
-    };
+    return RESPONSE_DEFAULT;
   }
 }
 
@@ -142,35 +127,37 @@ const getPrompt = (
   historyQuestionLabels: { topic: string; correctPercentage: number }[][],
   language: "vi" | "en" = "vi"
 ): string => {
+  const timeDifference = timeSpent - averageSpeed;
+  const timeDifferencePercentage = ((timeDifference / averageSpeed) * 100).toFixed(2);
+  const timeDifferencePercentageAbs = Math.abs(Number(timeDifferencePercentage));
+
   if (language === "vi") {
     const promptVi = `
-    Vai trò: Bạn là một trợ lý AI giáo dục, phân tích bài kiểm tra để đưa ra khuyến nghị học tập cá nhân hóa.
+    Vai trò: Trợ lý AI giáo dục phân tích bài kiểm tra và đưa ra khuyến nghị học tập
 
-    Yêu cầu:
-
-    Ngôn ngữ: Tiếng Việt
-    Định dạng: JSON hợp lệ theo cấu trúc dưới đây
-    Markdown: Sử dụng để làm rõ nội dung
     Dữ liệu đầu vào:
-
       Môn học: ${subject}
-      Điểm tổng thể: ${score}/10
-      Tốc độ trung bình của bài thi: ${averageSpeed} giây/câu
-      Tốc độ trung bình của bạn: ${timeSpent} giây
+      Điểm: ${score}/10
+      Tốc độ trung bình bài thi: ${averageSpeed}s/câu
+      Tốc độ của bạn: ${timeSpent}s
+      % chênh lệch thời gian: ${timeDifferencePercentageAbs}%
       Điểm mạnh: ${strengths.join(", ")}
       Điểm yếu: ${weaknesses.join(", ")}
-      Danh sách chủ đề và phần trăm đúng: ${topicAnalysis
+      Tổng số chủ đề yếu: ${weaknesses.length}
+      Nguồn học tập và thực hành: 'EduQuiz Study'
+      Đề thi có những chủ đề tương tự: Không có
+      Chủ đề và % đúng: ${topicAnalysis
         .map((t) => `${t.topic} ${t.correctPercentage}%`)
         .join(", ")}
-      Điểm số trước đó: ${
+      Điểm số trước: ${
         historyScore.length > 0 ? historyScore.join(", ") : "Không có"
       }
-      Thời gian làm bài trước đó: ${
+      Thời gian làm bài trước: ${
         historyWorkingTime.length > 0
           ? historyWorkingTime.join(", ")
           : "Không có"
       }
-      Danh sách chủ đề và phần trăm đúng trước đó (theo từng bài kiểm tra từ gần đây nhất đến xa nhất): ${historyQuestionLabels
+      Chủ đề và % đúng trước đây:  ${historyQuestionLabels.length > 0 ? historyQuestionLabels
         .map(
           (examTopics, examIndex) =>
             `   - Bài kiểm tra ${
@@ -179,38 +166,42 @@ const getPrompt = (
               .map((topic) => `${topic.topic} ${topic.correctPercentage}%`)
               .join(", ")}`
         )
-        .join("\n")}
-    Khuyến nghị cần có:
-
-      1. Cải thiện điểm số (Gợi ý tài liệu, bài tập, khóa học)
-      2. Đánh giá thời gian làm bài
-        Tốc độ & mức độ chính xác
-        Xu hướng thay đổi giữa các lần thi
-      3. Phương pháp học tập theo chủ đề yếu
-      4. Gợi ý bài kiểm tra tiếp theo
-      5. Phân tích sự tiến bộ (so sánh điểm số, thời gian, chủ đề)
-
-    JSON output format:
+        .join("\n"): "Không có"}
+    Trả về JSON hợp lệ với định dạng sau:
     {
-      "improvementSuggestions": "## Điểm mạnh\n...\n## Điểm yếu\n...\n## Đề xuất cải thiện\n...",
-      "timeAnalysisSuggestions": "## Phân tích thời gian\n...",
-      "studyMethodSuggestions": "- Phương pháp 1\n- Phương pháp 2\n...",
-      "nextExamSuggestions": "## Bài kiểm tra tiếp theo\n...",
-      "historyScoreSuggestions": "## Xu hướng điểm số\n...",
-      "historyWorkingTimeSuggestions": "## Xu hướng thời gian làm bài\n...",
-      "historyQuestionLabels": "- Chủ đề: Hình học 66,66% bài hiện tại so với các lần làm đề thi trước đó có tăng rõ rệt, cụ thể trả lời đúng nhiều hơn,...........v.v \n- Chủ đề: Đại số 10% bài hiện tại so với các lần làm đề thi trước đó có giảm, cụ thể trả lời đúng ít hơn,...........v.v"
+      // Định dạng output mong muốn:
+
+      "strengthsAnalysis": "[nội dung]",
+      "weaknessesAnalysis": "[nội dung]",
+      "improvementSuggestions": "[nội dung]",
+      "timeAnalysisSuggestions": "[nội dung]",
+      "nextExamSuggestions": "[nội dung]",
+
     }
-    Yêu cầu Markdown:
 
-    Headings (##, ###)
-    Danh sách (số thứ tự, bullet points)
-    Nhấn mạnh (bold, italic)
-    Bảng nếu cần thiết
-    Quotes để làm nổi bật nội dung quan trọng
-    Lưu ý:
+    Hướng dẫn:
+    - Viết bằng tiếng Việt, sử dụng Markdown (##, danh sách, **bold**, *italic*)
+    - Đảm bảo JSON hợp lệ, tránh lỗi parsing
+    - Dữ liệu lịch sử là dữ liệu được lấy từ input Điểm số trước, Chủ đề và % đúng trước đây và Thời gian làm bài trước
+    - Chủ đề dưới 50% đúng: là yếu
+    - Chủ đề trên 80% đúng: là mạnh
 
-    Escape ký tự Markdown đúng cách để JSON hợp lệ
-    Đảm bảo JSON có thể phân tích cú pháp (parse) mà không lỗi
+    Yêu cầu chi tiết cho từng mục:
+    - improvementSuggestions: Bắt đầu với nhận xét tổng quan về kết quả, sau đó đề xuất mục tiêu điểm số cụ thể cho lần thi tiếp theo, sau đó liệt kê theo ý sau
+       + Xác định trọng tâm học tập (Dựa trên kết quả hiện tại và các chủ đề ưu tiên)
+       + Phương pháp học tập hiệu quả
+       + Luyện tập thực tế củng cố kiến thức
+       + Lập kế hoạch học tập khoa học
+    - timeAnalysisSuggestions:
+      * NẾU có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): Phân tích xu hướng điểm số và thời gian trung bình.
+      * NẾU KHÔNG có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): đưa ra % chênh lệch thời gian từ input ( nhanh hay chập không đưa ra dữ liệu input), liệt kê chủ đề yếu xong nhận xét
+    - nextExamSuggestions: Gợi ý luyện thêm các bài thi có chủ đề tương tự lấy từ input và nguồn từ in put (không liệt kê ngoài input)
+    - strengthsAnalysis:
+      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề mạnh và so sánh khác biệt về thời gian và % đúng với các lần thi trước ĐƯA RA CHỨNG CỨ CỤ THỂ THỐNG KÊ, TUYỆT ĐỐI KHÔNG LIỆT KÊ QUÁ 3 CHỦ ĐỀ MẠNH.
+      * NẾU KHÔNG có lịch sử chủ đề trước: Nhận xét điểm mạnh (highlight chủ đề mạnh) TUYỆT ĐỐI KHÔNG LIỆT KÊ QUÁ 3 CHỦ ĐỀ MẠNH.
+    - weaknessesAnalysis:
+      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề yếu và so sánh khác biệt về thời gian và % đúng với các lần thi trước ĐƯA RA CHỨNG CỨ CỤ THỂ, TUYỆT ĐỐI KHÔNG LIỆT KÊ QUÁ 3 CHỦ ĐỀ YẾU.
+      * NẾU KHÔNG có lịch sử chủ đề trước: CHỈ đưa ra tổng số Tổng số chủ đề yếu từ input và nhận xét tổng quát, TUYỆT ĐỐI KHÔNG liệt kê từng chủ đề yếu cụ thể.
   `;
     return promptVi;
   } else {
