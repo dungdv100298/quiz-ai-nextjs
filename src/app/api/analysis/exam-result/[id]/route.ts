@@ -8,6 +8,7 @@ import {
 } from "@/types/analysis";
 import { calculateTopicAnalysis } from "@/utils/analysis-utils";
 import { generateAISuggestions } from "@/utils/ai-suggestions";
+import mysql from "mysql2/promise";
 
 const prisma = new PrismaClient();
 
@@ -42,6 +43,8 @@ export async function GET(
       },
       take: 5,
     });
+    // Query unfinished exams from eduquiz database using mysql2
+    const examUnfinished = await getUnfinishedExams(createAnalysisDto.userId);
     const historyScore =
       examAnalysis?.map((item: any) => item.score as number) || [];
     const historyWorkingTime =
@@ -76,7 +79,8 @@ export async function GET(
       topicAnalysis,
       historyScore,
       historyWorkingTime,
-      historyQuestionLabels
+      historyQuestionLabels,
+      examUnfinished
     );
 
     // Create analysis result
@@ -250,4 +254,34 @@ function processQuestions(sections: any): QuestionLabel[] {
         isCorrect,
       };
     });
+}
+
+async function getUnfinishedExams(userId: string) {
+  try {
+    const connection = await mysql.createConnection(process.env.DATABASE_EDUQUIZ_DEV_URL || '');
+    
+    const [rows] = await connection.execute(`
+      SELECT *
+      FROM quiz_exams
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM quiz_exam_results_v2
+        WHERE quiz_exam_results_v2.exam_id = quiz_exams.id
+        AND quiz_exam_results_v2.user_id = ?
+      )
+      LIMIT 10
+    `, [userId]);
+    
+    const examUnfinished = Array.isArray(rows) ? rows.map((exam: any) => ({
+      id: String(exam.id),
+      name: exam.name || "Bài thi không xác định",
+    })) : [];
+    
+    await connection.end();
+
+    return examUnfinished;
+  } catch (error) {
+    console.error("Error querying eduquiz database:", error);
+    return [];
+  }
 }
