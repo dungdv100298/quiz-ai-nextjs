@@ -109,20 +109,11 @@ export async function GET(
       totalCost: aiSuggestions.totalCost,
       strengths,
       weaknesses,
+      strengthsAnalysis: aiSuggestions.strengthsAnalysis,
+      weaknessesAnalysis: aiSuggestions.weaknessesAnalysis,
       improvementSuggestions: aiSuggestions.improvementSuggestions,
       timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
-      studyMethodSuggestions: aiSuggestions.studyMethodSuggestions,
       nextExamSuggestions: aiSuggestions.nextExamSuggestions,
-      historyScoreSuggestions:
-        historyScore.length > 0 ? aiSuggestions.historyScoreSuggestions : "",
-      historyWorkingTimeSuggestions:
-        historyWorkingTime.length > 0
-          ? aiSuggestions.historyWorkingTimeSuggestions
-          : "",
-      historyQuestionLabels:
-        historyQuestionLabels.length > 0
-          ? aiSuggestions.historyQuestionLabels
-          : "",
     };
 
     // Save analysis to database
@@ -149,22 +140,11 @@ export async function GET(
         questionLabels: createAnalysisDto.questionLabels as any, // JSON type in Prisma
         topicAnalysis: topicAnalysis as any, // JSON type in Prisma
         analysisResult: {
+          strengthsAnalysis: aiSuggestions.strengthsAnalysis,
+          weaknessesAnalysis: aiSuggestions.weaknessesAnalysis,
           improvementSuggestions: aiSuggestions.improvementSuggestions,
           timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
-          studyMethodSuggestions: aiSuggestions.studyMethodSuggestions,
           nextExamSuggestions: aiSuggestions.nextExamSuggestions,
-          historyScoreSuggestions:
-            historyScore.length > 0
-              ? aiSuggestions.historyScoreSuggestions
-              : "",
-          historyWorkingTimeSuggestions:
-            historyWorkingTime.length > 0
-              ? aiSuggestions.historyWorkingTimeSuggestions
-              : "",
-          historyQuestionLabels:
-            historyQuestionLabels.length > 0
-              ? aiSuggestions.historyQuestionLabels
-              : "",
         }, // JSON type in Prisma
       },
     });
