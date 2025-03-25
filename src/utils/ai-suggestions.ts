@@ -139,8 +139,8 @@ const getPrompt = (
       Tốc độ trung bình bài thi: ${averageSpeed}s/câu
       Tốc độ của bạn: ${timeSpent}s
       % chênh lệch thời gian: ${timeDifferencePercentageAbs}%
-      Điểm mạnh: ${strengths.join(", ")}
-      Điểm yếu: ${weaknesses.join(", ")}
+      Điểm mạnh: ${strengths.length > 0 ? strengths.join(", ") : "Không có"}
+      Điểm yếu: ${weaknesses.length > 0 ? weaknesses.join(", ") : "Không có"}
       Tổng số chủ đề yếu: ${weaknesses.length}
       Nguồn học tập và thực hành: 'EduQuiz Study'
       Chủ đề và % đúng: ${topicAnalysis
@@ -191,7 +191,7 @@ const getPrompt = (
       * NẾU có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): Phân tích xu hướng điểm số và thời gian trung bình.
       * NẾU KHÔNG có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): đưa ra % chênh lệch thời gian từ input ( nhanh hay chập không đưa ra dữ liệu input), liệt kê chủ đề yếu xong nhận xét
     - strengthsAnalysis:
-      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề mạnh và so sánh khác biệt về thời gian và % đúng với các lần thi trước ĐƯA RA CHỨNG CỨ CỤ THỂ THỐNG KÊ, TUYỆT ĐỐI KHÔNG LIỆT KÊ CHỦ ĐỀ DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.
+      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề mạnh và so sánh khác biệt về thời gian và % đúng với các lần thi trước ĐƯA RA CHỨNG CỨ CỤ THỂ THỐNG KÊ, TUYỆT ĐỐI KHÔNG LIỆT KÊ ĐIỂM MẠNH DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.
       * NẾU KHÔNG có lịch sử chủ đề trước: Nhận xét điểm mạnh (highlight chủ đề mạnh) TUYỆT ĐỐI KHÔNG LIỆT KÊ CHỦ ĐỀ DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.
     - weaknessesAnalysis:
       * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề yếu và so sánh khác biệt về thời gian và % đúng với các lần thi trước ĐƯA RA CHỨNG CỨ CỤ THỂ, TUYỆT ĐỐI KHÔNG LIỆT KÊ QUÁ 3 CHỦ ĐỀ YẾU.
