@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/db";
+import { AnalysisResultDto, ExamResult, TopicAnalysis } from "@/types/analysis";
 import { NextRequest, NextResponse } from "next/server";
 
 // get exam result by page, pageSize, sortBy, sortOrder, filter by userId and examId
@@ -56,8 +57,50 @@ export async function GET(request: NextRequest) {
     where: whereCondition,
   });
 
+  const examAnalysis: AnalysisResultDto[] = examResult.map((result) => {
+    const analysisResult = JSON.parse(JSON.stringify(result));
+    return {
+      userId: analysisResult.userId,
+      summary: {
+        examName: analysisResult.examName,
+        subject: analysisResult.subject,
+        score: analysisResult.score,
+        time: analysisResult.workingTime,
+      },
+      detailExamResult: {
+        totalQuestions: analysisResult.totalQuestions,
+        emptyAnswers: analysisResult.emptyAnswers,
+        correctAnswers: analysisResult.correctAnswers,
+        wrongAnswers: analysisResult.wrongAnswers,
+        rating: analysisResult.rating,
+      },
+      topicAnalysis: analysisResult.topicAnalysis 
+        ? (JSON.parse(JSON.stringify(analysisResult.topicAnalysis)) as TopicAnalysis[]) 
+        : [],
+      workingTimeAnalysis: {
+        workingTime: analysisResult.workingTime,
+        averageSpeed: analysisResult.averageSpeed,
+        timeSpent: analysisResult.timeSpent,
+      },
+      inputTokens: analysisResult.inputTokens,
+      outputTokens: analysisResult.outputTokens,
+      totalTokens: analysisResult.totalTokens,
+      inputCost: analysisResult.inputCost,
+      outputCost: analysisResult.outputCost,
+      totalCost: analysisResult.totalCost,
+      strengths: analysisResult.strengths as string[] || [],
+      weaknesses: analysisResult.weaknesses as string[] || [],
+      strengthsAnalysis: analysisResult.strengthsAnalysis || "",
+      weaknessesAnalysis: analysisResult.weaknessesAnalysis || "",
+      improvementSuggestions: analysisResult.improvementSuggestions || "",
+      timeAnalysisSuggestions: analysisResult.timeAnalysisSuggestions || "",
+      examUnfinished: analysisResult.examUnfinished as ExamResult[] || [],
+      examLowScoreSameSubject: analysisResult.examLowScoreSameSubject as ExamResult[] || [],
+    }
+  });
+
   return NextResponse.json({
-    data: examResult,
+    data: examAnalysis,
     pagination: {
       total,
       page: parseInt(page),

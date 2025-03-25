@@ -17,6 +17,8 @@ model ExamAnalysis {
   rating          String
   score           Float
   workingTime     Int      @default(0)
+  averageSpeed    Float?
+  timeSpent       Float?
   inputTokens     Float
   outputTokens    Float
   totalTokens     Float
@@ -27,6 +29,10 @@ model ExamAnalysis {
   emptyAnswers    Float
   correctAnswers  Float
   wrongAnswers    Float
+  strengths       Json?
+  weaknesses      Json?
+  examUnfinished       Json?
+  examLowScoreSameSubject      Json?
   questionLabels  Json     // Lưu trữ dưới dạng JSON
   topicAnalysis   Json     // Lưu trữ dưới dạng JSON
   analysisResult  Json     // Lưu trữ AnalysisResultDto dưới dạng JSON

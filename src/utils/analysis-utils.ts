@@ -5,7 +5,7 @@ export function calculateTopicAnalysis(questionLabels: QuestionLabel[]): TopicAn
 
   // Process each question
   questionLabels.forEach((question) => {
-    const { labels, isCorrect } = question;
+    const { labels, isCorrect, isBlank } = question;
     labels.forEach(label => {
       if (!topicStatsMap.has(label)) {
         topicStatsMap.set(label, {
@@ -13,6 +13,7 @@ export function calculateTopicAnalysis(questionLabels: QuestionLabel[]): TopicAn
           questionCount: 0,
           correctCount: 0,
           wrongCount: 0,
+          blankCount: 0,
           correctPercentage: 0,
           incorrectPercentage: 0,
         });
@@ -23,6 +24,8 @@ export function calculateTopicAnalysis(questionLabels: QuestionLabel[]): TopicAn
 
       if (isCorrect) {
         stats.correctCount++;
+      } else if (isBlank) {
+        stats.blankCount++;
       } else {
         stats.wrongCount++;
       }
