@@ -2,13 +2,19 @@ export interface QuestionLabel {
   id: number;
   labels: string[];
   isCorrect: boolean;
+  isBlank: boolean;
 }
-
+export interface ExamResult {
+  examId: string;
+  examName: string;
+  alias: string;
+}
 export interface TopicAnalysis {
   topic: string;
   questionCount: number;
   correctCount: number;
   wrongCount: number;
+  blankCount: number;
   correctPercentage: number;
   incorrectPercentage: number;
 }
@@ -48,9 +54,9 @@ export interface AnalysisResultDto {
   };
   topicAnalysis: TopicAnalysis[];
   workingTimeAnalysis: {
-    workingTime: number;
-    averageSpeed: number;
-    timeSpent: number;
+    workingTime: number | null;
+    averageSpeed: number | null;
+    timeSpent: number | null;
   };
   strengths: string[];
   weaknesses: string[];
@@ -59,7 +65,6 @@ export interface AnalysisResultDto {
   improvementSuggestions: string;
   timeAnalysisSuggestions: string;
   studyMethodSuggestions?: string;
-  nextExamSuggestions: string;
   historyScoreSuggestions?: string;
   historyWorkingTimeSuggestions?: string;
   historyQuestionLabels?: string;
@@ -69,4 +74,6 @@ export interface AnalysisResultDto {
   inputCost: number;
   outputCost: number;
   totalCost: number;
+  examUnfinished: ExamResult[];
+  examLowScoreSameSubject: ExamResult[];
 }

@@ -5,6 +5,7 @@ import {
   CreateAnalysisDto,
   AnalysisResultDto,
   QuestionLabel,
+  ExamResult,
 } from "@/types/analysis";
 import { calculateTopicAnalysis } from "@/utils/analysis-utils";
 import { generateAISuggestions } from "@/utils/ai-suggestions";
@@ -43,8 +44,14 @@ export async function GET(
       },
       take: 5,
     });
-    // Query unfinished exams from eduquiz database using mysql2
-    const examUnfinished = await getUnfinishedExams(createAnalysisDto.userId, createAnalysisDto.subjectId);
+    const examUnfinished = await getUnfinishedExams(
+      createAnalysisDto.userId,
+      createAnalysisDto.subjectId
+    );
+    const examLowScoreSameSubject = await getExamLowScoreSameSubject(
+      createAnalysisDto.userId,
+      createAnalysisDto.subjectId
+    );
     const historyScore =
       examAnalysis?.map((item: any) => item.score as number) || [];
     const historyWorkingTime =
@@ -79,8 +86,7 @@ export async function GET(
       topicAnalysis,
       historyScore,
       historyWorkingTime,
-      historyQuestionLabels,
-      examUnfinished
+      historyQuestionLabels
     );
 
     // Create analysis result
@@ -117,7 +123,8 @@ export async function GET(
       weaknessesAnalysis: aiSuggestions.weaknessesAnalysis,
       improvementSuggestions: aiSuggestions.improvementSuggestions,
       timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
-      nextExamSuggestions: aiSuggestions.nextExamSuggestions,
+      examUnfinished: examUnfinished as ExamResult[],
+      examLowScoreSameSubject: examLowScoreSameSubject as ExamResult[],
     };
 
     // Save analysis to database
@@ -130,6 +137,8 @@ export async function GET(
         examName: createAnalysisDto.examName,
         score: createAnalysisDto.score,
         workingTime: createAnalysisDto.workingTime,
+        averageSpeed: averageSpeed,
+        timeSpent: timeSpent,
         rating: createAnalysisDto.rating,
         inputTokens: aiSuggestions.inputTokens,
         outputTokens: aiSuggestions.outputTokens,
@@ -143,12 +152,15 @@ export async function GET(
         wrongAnswers: createAnalysisDto.wrongAnswers,
         questionLabels: createAnalysisDto.questionLabels as any, // JSON type in Prisma
         topicAnalysis: topicAnalysis as any, // JSON type in Prisma
+        strengths: strengths as any, // JSON type in Prisma
+        weaknesses: weaknesses as any, // JSON type in Prisma
+        examUnfinished: examUnfinished as any, // JSON type in Prisma
+        examLowScoreSameSubject: examLowScoreSameSubject as any, // JSON type in Prisma
         analysisResult: {
           strengthsAnalysis: aiSuggestions.strengthsAnalysis,
           weaknessesAnalysis: aiSuggestions.weaknessesAnalysis,
           improvementSuggestions: aiSuggestions.improvementSuggestions,
           timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
-          nextExamSuggestions: aiSuggestions.nextExamSuggestions,
         }, // JSON type in Prisma
       },
     });
@@ -215,7 +227,9 @@ function processQuestions(sections: any): QuestionLabel[] {
       section.question_data.labels &&
       section.question_data.labels.length > 0
     ) {
-      const labels = section.question_data.labels.map((label: any) => label.name);
+      const labels = section.question_data.labels.map(
+        (label: any) => label.name
+      );
       labelsMap.set(section.question_id, labels);
     }
   });
@@ -252,14 +266,17 @@ function processQuestions(sections: any): QuestionLabel[] {
         id,
         labels,
         isCorrect,
+        isBlank: !section.answer_choosed_data,
       };
     });
 }
 
-async function getUnfinishedExams(userId: string, subjectId: string) {
+async function getUnfinishedExams(userId: string, subjectId: string): Promise<ExamResult[]> {
   try {
-    const connection = await mysql.createConnection(process.env.DATABASE_EDUQUIZ_DEV_URL || '');
-    
+    const connection = await mysql.createConnection(
+      process.env.DATABASE_EDUQUIZ_DEV_URL || ""
+    );
+
     const [rows] = await connection.execute(`
       SELECT qe.*
       FROM quiz_exams qe
@@ -271,14 +288,57 @@ async function getUnfinishedExams(userId: string, subjectId: string) {
           WHERE qer.exam_id = qe.id
           AND qer.user_id = ${userId}
       )
-      LIMIT 10;
+      LIMIT 5;
     `);
-    
-    const examUnfinished = Array.isArray(rows) ? rows.map((exam: any) => ({
-      id: String(exam.id),
-      name: exam.name || "Bài thi không xác định",
-    })) : [];
-    
+
+    const examUnfinished: ExamResult[] = Array.isArray(rows)
+      ? rows.map((exam: any) => ({
+          examId: String(exam.id),
+          examName: exam.name || "Bài thi không xác định",
+          alias: exam.alias || "",
+        }))
+      : [];
+
+    await connection.end();
+    return examUnfinished;
+  } catch (error) {
+    console.error("Error querying eduquiz database:", error);
+    return [];
+  }
+}
+
+async function getExamLowScoreSameSubject(userId: string, subjectId: string): Promise<ExamResult[]> {
+  try {
+    const connection = await mysql.createConnection(
+      process.env.DATABASE_EDUQUIZ_DEV_URL || ""
+    );
+
+    const [rows] = await connection.execute(`
+      SELECT DISTINCT 
+          bt.*,
+          MAX(kqt.total_score) as total_score
+      FROM 
+          quiz_exams bt
+      JOIN 
+          eduprep_dev.exam_subject_map bsm ON bt.id = bsm.exam_id
+      JOIN 
+          quiz_exam_results_v2 kqt ON bt.id = kqt.exam_id
+      WHERE 
+          kqt.user_id = ${userId}
+          AND bsm.subject_id = ${subjectId}
+          AND kqt.total_score < 5
+      GROUP BY 
+          bt.id 
+    `);
+
+    const examUnfinished = Array.isArray(rows)
+      ? rows.map((exam: any) => ({
+          examId: String(exam.id),
+          examName: exam.name || "Bài thi không xác định",
+          alias: exam.alias || "",
+        }))
+      : [];
+
     await connection.end();
 
     return examUnfinished;

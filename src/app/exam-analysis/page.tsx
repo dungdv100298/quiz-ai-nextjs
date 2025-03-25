@@ -184,7 +184,7 @@ export default function ExamAnalysisPage() {
                   Tốc độ trung bình 1 câu của đề thi
                 </p>
                 <p className="text-xl font-bold">
-                  {analysisResult.workingTimeAnalysis.averageSpeed.toFixed(2)}{" "}
+                  {analysisResult?.workingTimeAnalysis?.averageSpeed?.toFixed(2) || 0}{" "}
                   giây/câu
                 </p>
               </div>
@@ -193,7 +193,7 @@ export default function ExamAnalysisPage() {
                   Tốc độ trung bình 1 câu của bạn
                 </p>
                 <p className="text-xl font-bold">
-                  {analysisResult.workingTimeAnalysis.timeSpent.toFixed(2)} giây
+                  {analysisResult?.workingTimeAnalysis?.timeSpent?.toFixed(2) || 0} giây
                 </p>
               </div>
             </div>
@@ -272,7 +272,7 @@ export default function ExamAnalysisPage() {
               textColorClass="text-purple-800"
             />
           </div>
-          <h2 className="text-xl font-medium mb-3">Điểm yếu</h2>
+          <h2 className="text-xl font-medium mb-3">Điểm cần cải thiện</h2>
           <div className="mb-8">
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -351,12 +351,12 @@ export default function ExamAnalysisPage() {
               textColorClass="text-green-800"
             />
 
-            <AnalysisSection
+            {/* <AnalysisSection
               title="Gợi ý cho bài thi tiếp theo"
               content={analysisResult.nextExamSuggestions}
               bgColorClass="bg-yellow-50"
               textColorClass="text-yellow-800"
-            />
+            /> */}
 
           </div>
         </div>
