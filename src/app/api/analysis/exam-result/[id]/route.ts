@@ -44,7 +44,7 @@ export async function GET(
       take: 5,
     });
     // Query unfinished exams from eduquiz database using mysql2
-    const examUnfinished = await getUnfinishedExams(createAnalysisDto.userId);
+    const examUnfinished = await getUnfinishedExams(createAnalysisDto.userId, createAnalysisDto.subjectId);
     const historyScore =
       examAnalysis?.map((item: any) => item.score as number) || [];
     const historyWorkingTime =
@@ -256,21 +256,23 @@ function processQuestions(sections: any): QuestionLabel[] {
     });
 }
 
-async function getUnfinishedExams(userId: string) {
+async function getUnfinishedExams(userId: string, subjectId: string) {
   try {
     const connection = await mysql.createConnection(process.env.DATABASE_EDUQUIZ_DEV_URL || '');
     
     const [rows] = await connection.execute(`
-      SELECT *
-      FROM quiz_exams
-      WHERE NOT EXISTS (
-        SELECT 1
-        FROM quiz_exam_results_v2
-        WHERE quiz_exam_results_v2.exam_id = quiz_exams.id
-        AND quiz_exam_results_v2.user_id = ?
+      SELECT qe.*
+      FROM quiz_exams qe
+      JOIN eduprep_dev.exam_subject_map esm ON qe.id = esm.exam_id
+      WHERE esm.subject_id = ${subjectId}
+      AND NOT EXISTS (
+          SELECT 1
+          FROM quiz_exam_results_v2 qer
+          WHERE qer.exam_id = qe.id
+          AND qer.user_id = ${userId}
       )
-      LIMIT 10
-    `, [userId]);
+      LIMIT 10;
+    `);
     
     const examUnfinished = Array.isArray(rows) ? rows.map((exam: any) => ({
       id: String(exam.id),
