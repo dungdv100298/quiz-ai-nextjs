@@ -38,6 +38,7 @@ export interface CreateAnalysisDto {
 }
 
 export interface AnalysisResultDto {
+  id?: number;
   userId: string;
   summary: {
     examName: string;
@@ -76,4 +77,5 @@ export interface AnalysisResultDto {
   totalCost: number;
   examUnfinished: ExamResult[];
   examLowScoreSameSubject: ExamResult[];
+  createdAt?: Date;
 }

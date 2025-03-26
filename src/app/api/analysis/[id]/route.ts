@@ -18,6 +18,7 @@ export async function GET(request: NextRequest,
 
 
   const analysisResult: AnalysisResultDto = {
+    id: examResult?.id || 0,
     userId: examResult?.userId || "",
     summary: {
       examName: examResult?.examName || "",
@@ -54,6 +55,7 @@ export async function GET(request: NextRequest,
     timeAnalysisSuggestions: examResultJson?.analysisResult?.timeAnalysisSuggestions || "",
     examUnfinished: examResultJson?.examUnfinished || [],
     examLowScoreSameSubject: examResultJson?.examLowScoreSameSubject || [],
+    createdAt: examResult?.createdAt,
   };
 
   return NextResponse.json(analysisResult);

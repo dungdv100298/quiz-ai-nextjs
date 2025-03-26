@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
   const examAnalysis: AnalysisResultDto[] = examResult.map((result) => {
     const analysisResult = JSON.parse(JSON.stringify(result));
     return {
+      id: analysisResult.id || 0,
       userId: analysisResult.userId,
       summary: {
         examName: analysisResult.examName,
@@ -96,6 +97,7 @@ export async function GET(request: NextRequest) {
       timeAnalysisSuggestions: analysisResult.timeAnalysisSuggestions || "",
       examUnfinished: analysisResult.examUnfinished as ExamResult[] || [],
       examLowScoreSameSubject: analysisResult.examLowScoreSameSubject as ExamResult[] || [],
+      createdAt: analysisResult.createdAt,
     }
   });
 
