@@ -297,7 +297,7 @@ export default function ExamAnalysisPage() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {analysisResult.topicAnalysis
-                    .filter((topic) => topic.correctPercentage < 50)
+                    .filter((topic) => topic.correctPercentage < 80)
                     .map((topic, index) => (
                       <tr
                         key={index}

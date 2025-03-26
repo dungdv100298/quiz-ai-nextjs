@@ -178,8 +178,10 @@ const getPrompt = (
     - Viết bằng tiếng Việt, sử dụng Markdown (##, danh sách, **bold**, *italic*)
     - Đảm bảo JSON hợp lệ, tránh lỗi parsing
     - Dữ liệu lịch sử là dữ liệu được lấy từ input Điểm số trước, Chủ đề và % đúng trước đây và Thời gian làm bài trước
-    - Chủ đề dưới 50% đúng: là yếu
+    - Chủ đề dưới 80% đúng: là yếu
     - Chủ đề trên 80% đúng: là mạnh
+    - KHÔNG DÙNG TỪ "ĐIỂM YẾU" MÀ THAY VÀO LÀ "ĐIỂM CẦN CẢI THIỆN"
+    - KHÔNG DÙNG TỪ "EM" MÀ THAY VÀO LÀ "BẠN"
 
     Yêu cầu chi tiết cho từng mục:
     - improvementSuggestions: Bắt đầu với nhận xét tổng quan về kết quả, sau đó đề xuất mục tiêu điểm số cụ thể cho lần thi tiếp theo, sau đó liệt kê theo ý sau
