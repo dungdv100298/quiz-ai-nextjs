@@ -15,6 +15,20 @@ const prisma = new PrismaClient();
 
 export const maxDuration = 60;
 
+const requestQueues: Map<string, Promise<any>> = new Map();
+
+async function queueRequestForUser(userId: string, requestFn: () => Promise<any>): Promise<any> {
+  const currentQueue = requestQueues.get(userId) || Promise.resolve();
+  
+  const newQueue = currentQueue
+    .catch(() => {})
+    .then(requestFn);
+  
+  requestQueues.set(userId, newQueue);
+  
+  return newQueue;
+}
+
 // URL: /api/analysis/exam-result/[id]
 export async function GET(
   request: NextRequest,
@@ -23,149 +37,156 @@ export async function GET(
   try {
     const { id } = await params;
 
-    // Call API https://studio-dev.eduquiz.io.vn/quizexam/api/v1/exam-results/{id}
+    // Call API to get exam result data
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_EDUQUIZ_API_URL}/quizexam/api/v1/exam-results/${id}`
     );
     const data = await response.json();
-
     const formattedData = formatExamResult(data);
+    const userId = formattedData.userId;
 
-    const createAnalysisDto: CreateAnalysisDto = formattedData;
+    return await queueRequestForUser(userId, async () => {
+      try {
+        const createAnalysisDto: CreateAnalysisDto = formattedData;
 
-    // query list history score by userId and examId in  exam_analysis table
-    const examAnalysis = await prisma.examAnalysis.findMany({
-      where: {
-        userId: createAnalysisDto.userId,
-        examId: createAnalysisDto.examId,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 5,
-    });
-    const examUnfinished = await getUnfinishedExams(
-      createAnalysisDto.userId,
-      createAnalysisDto.subjectId
-    );
-    const examLowScoreSameSubject = await getExamLowScoreSameSubject(
-      createAnalysisDto.userId,
-      createAnalysisDto.subjectId
-    );
-    const historyScore =
-      examAnalysis?.map((item: any) => item.score as number) || [];
-    const historyWorkingTime =
-      examAnalysis?.map((item: any) => item.workingTime as number) || [];
-    const historyQuestionLabels = getHistoryQuestionLabels(examAnalysis);
-    // Calculate topic analysis
-    const topicAnalysis = calculateTopicAnalysis(
-      createAnalysisDto.questionLabels
-    );
-    const averageSpeed =
-      createAnalysisDto.time / createAnalysisDto.totalQuestions;
-    const timeSpent =
-      createAnalysisDto.workingTime / createAnalysisDto.totalQuestions;
+        // query list history score by userId and examId in  exam_analysis table
+        const examAnalysis = await prisma.examAnalysis.findMany({
+          where: {
+            userId: createAnalysisDto.userId,
+            examId: createAnalysisDto.examId,
+          },
+          orderBy: {
+            createdAt: "desc",
+          },
+          take: 5,
+        });
+        const examUnfinished = await getUnfinishedExams(
+          createAnalysisDto.userId,
+          createAnalysisDto.subjectId
+        );
+        const examLowScoreSameSubject = await getExamLowScoreSameSubject(
+          createAnalysisDto.userId,
+          createAnalysisDto.subjectId
+        );
+        const historyScore =
+          examAnalysis?.map((item: any) => item.score as number) || [];
+        const historyWorkingTime =
+          examAnalysis?.map((item: any) => item.workingTime as number) || [];
+        const historyQuestionLabels = getHistoryQuestionLabels(examAnalysis);
+        // Calculate topic analysis
+        const topicAnalysis = calculateTopicAnalysis(
+          createAnalysisDto.questionLabels
+        );
+        const averageSpeed =
+          createAnalysisDto.time / createAnalysisDto.totalQuestions;
+        const timeSpent =
+          createAnalysisDto.workingTime / createAnalysisDto.totalQuestions;
 
-    // Identify strengths and weaknesses
-    const strengths = topicAnalysis
-      .filter((topic) => topic.correctPercentage >= 80)
-      .map((topic) => topic.topic);
+        // Identify strengths and weaknesses
+        const strengths = topicAnalysis
+          .filter((topic) => topic.correctPercentage >= 80)
+          .map((topic) => topic.topic);
 
-    const weaknesses = topicAnalysis
-      .filter((topic) => topic.correctPercentage < 50)
-      .map((topic) => topic.topic);
+        const weaknesses = topicAnalysis
+          .filter((topic) => topic.correctPercentage < 80)
+          .map((topic) => topic.topic);
 
-    // Generate AI suggestions
-    const aiSuggestions = await generateAISuggestions(
-      createAnalysisDto.subject,
-      createAnalysisDto.score,
-      averageSpeed,
-      timeSpent,
-      strengths,
-      weaknesses,
-      topicAnalysis,
-      historyScore,
-      historyWorkingTime,
-      historyQuestionLabels
-    );
+        // Generate AI suggestions
+        const aiSuggestions = await generateAISuggestions(
+          createAnalysisDto.subject,
+          createAnalysisDto.score,
+          averageSpeed,
+          timeSpent,
+          strengths,
+          weaknesses,
+          topicAnalysis,
+          historyScore,
+          historyWorkingTime,
+          historyQuestionLabels
+        );
 
-    // Create analysis result
-    const analysisResult: AnalysisResultDto = {
-      userId: createAnalysisDto.userId,
-      summary: {
-        examName: createAnalysisDto.examName,
-        subject: createAnalysisDto.subject,
-        score: createAnalysisDto.score,
-        time: createAnalysisDto.time,
-      },
-      detailExamResult: {
-        totalQuestions: createAnalysisDto.totalQuestions,
-        emptyAnswers: createAnalysisDto.emptyAnswers,
-        correctAnswers: createAnalysisDto.correctAnswers,
-        wrongAnswers: createAnalysisDto.wrongAnswers,
-        rating: createAnalysisDto.rating,
-      },
-      topicAnalysis,
-      workingTimeAnalysis: {
-        workingTime: createAnalysisDto.workingTime,
-        averageSpeed,
-        timeSpent,
-      },
-      inputTokens: aiSuggestions.inputTokens,
-      outputTokens: aiSuggestions.outputTokens,
-      totalTokens: aiSuggestions.totalTokens,
-      inputCost: aiSuggestions.inputCost,
-      outputCost: aiSuggestions.outputCost,
-      totalCost: aiSuggestions.totalCost,
-      strengths,
-      weaknesses,
-      strengthsAnalysis: aiSuggestions.strengthsAnalysis,
-      weaknessesAnalysis: aiSuggestions.weaknessesAnalysis,
-      improvementSuggestions: aiSuggestions.improvementSuggestions,
-      timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
-      examUnfinished: examUnfinished as ExamResult[],
-      examLowScoreSameSubject: examLowScoreSameSubject as ExamResult[],
-    };
-
-    // Save analysis to database
-    await prisma.examAnalysis.create({
-      data: {
-        examId: createAnalysisDto.examId,
-        userId: createAnalysisDto.userId,
-        subjectId: createAnalysisDto.subjectId,
-        subject: createAnalysisDto.subject,
-        examName: createAnalysisDto.examName,
-        score: createAnalysisDto.score,
-        workingTime: createAnalysisDto.workingTime,
-        averageSpeed: averageSpeed,
-        timeSpent: timeSpent,
-        rating: createAnalysisDto.rating,
-        inputTokens: aiSuggestions.inputTokens,
-        outputTokens: aiSuggestions.outputTokens,
-        totalTokens: aiSuggestions.totalTokens,
-        inputCost: aiSuggestions.inputCost,
-        outputCost: aiSuggestions.outputCost,
-        totalCost: aiSuggestions.totalCost,
-        totalQuestions: createAnalysisDto.totalQuestions,
-        emptyAnswers: createAnalysisDto.emptyAnswers,
-        correctAnswers: createAnalysisDto.correctAnswers,
-        wrongAnswers: createAnalysisDto.wrongAnswers,
-        questionLabels: createAnalysisDto.questionLabels as any, // JSON type in Prisma
-        topicAnalysis: topicAnalysis as any, // JSON type in Prisma
-        strengths: strengths as any, // JSON type in Prisma
-        weaknesses: weaknesses as any, // JSON type in Prisma
-        examUnfinished: examUnfinished as any, // JSON type in Prisma
-        examLowScoreSameSubject: examLowScoreSameSubject as any, // JSON type in Prisma
-        analysisResult: {
+        // Create analysis result
+        const analysisResult: AnalysisResultDto = {
+          userId: createAnalysisDto.userId,
+          summary: {
+            examName: createAnalysisDto.examName,
+            subject: createAnalysisDto.subject,
+            score: createAnalysisDto.score,
+            time: createAnalysisDto.time,
+          },
+          detailExamResult: {
+            totalQuestions: createAnalysisDto.totalQuestions,
+            emptyAnswers: createAnalysisDto.emptyAnswers,
+            correctAnswers: createAnalysisDto.correctAnswers,
+            wrongAnswers: createAnalysisDto.wrongAnswers,
+            rating: createAnalysisDto.rating,
+          },
+          topicAnalysis,
+          workingTimeAnalysis: {
+            workingTime: createAnalysisDto.workingTime,
+            averageSpeed,
+            timeSpent,
+          },
+          inputTokens: aiSuggestions.inputTokens,
+          outputTokens: aiSuggestions.outputTokens,
+          totalTokens: aiSuggestions.totalTokens,
+          inputCost: aiSuggestions.inputCost,
+          outputCost: aiSuggestions.outputCost,
+          totalCost: aiSuggestions.totalCost,
+          strengths,
+          weaknesses,
           strengthsAnalysis: aiSuggestions.strengthsAnalysis,
           weaknessesAnalysis: aiSuggestions.weaknessesAnalysis,
           improvementSuggestions: aiSuggestions.improvementSuggestions,
           timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
-        }, // JSON type in Prisma
-      },
-    });
+          examUnfinished: examUnfinished as ExamResult[],
+          examLowScoreSameSubject: examLowScoreSameSubject as ExamResult[],
+        };
 
-    return NextResponse.json(analysisResult, { status: 201 });
+        // Save analysis to database
+        await prisma.examAnalysis.create({
+          data: {
+            examId: createAnalysisDto.examId,
+            userId: createAnalysisDto.userId,
+            subjectId: createAnalysisDto.subjectId,
+            subject: createAnalysisDto.subject,
+            examName: createAnalysisDto.examName,
+            score: createAnalysisDto.score,
+            workingTime: createAnalysisDto.workingTime,
+            averageSpeed: averageSpeed,
+            timeSpent: timeSpent,
+            rating: createAnalysisDto.rating,
+            inputTokens: aiSuggestions.inputTokens,
+            outputTokens: aiSuggestions.outputTokens,
+            totalTokens: aiSuggestions.totalTokens,
+            inputCost: aiSuggestions.inputCost,
+            outputCost: aiSuggestions.outputCost,
+            totalCost: aiSuggestions.totalCost,
+            totalQuestions: createAnalysisDto.totalQuestions,
+            emptyAnswers: createAnalysisDto.emptyAnswers,
+            correctAnswers: createAnalysisDto.correctAnswers,
+            wrongAnswers: createAnalysisDto.wrongAnswers,
+            questionLabels: createAnalysisDto.questionLabels as any, // JSON type in Prisma
+            topicAnalysis: topicAnalysis as any, // JSON type in Prisma
+            strengths: strengths as any, // JSON type in Prisma
+            weaknesses: weaknesses as any, // JSON type in Prisma
+            examUnfinished: examUnfinished as any, // JSON type in Prisma
+            examLowScoreSameSubject: examLowScoreSameSubject as any, // JSON type in Prisma
+            analysisResult: {
+              strengthsAnalysis: aiSuggestions.strengthsAnalysis,
+              weaknessesAnalysis: aiSuggestions.weaknessesAnalysis,
+              improvementSuggestions: aiSuggestions.improvementSuggestions,
+              timeAnalysisSuggestions: aiSuggestions.timeAnalysisSuggestions,
+            }, // JSON type in Prisma
+          },
+        });
+
+        return NextResponse.json(analysisResult, { status: 201 });
+      } catch (error) {
+        console.error("Error analyzing exam in queue:", error);
+        throw error; // Re-throw to be caught by the outer try-catch
+      }
+    });
   } catch (error) {
     console.error("Error analyzing exam:", error);
     return NextResponse.json(
