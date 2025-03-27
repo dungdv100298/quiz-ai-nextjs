@@ -36,7 +36,15 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-
+    // check if the analysis already exists
+    const existingAnalysis = await prisma.examAnalysis.findFirst({
+      where: {
+        examResultId: id
+      }
+    });
+    if (existingAnalysis) {
+      return NextResponse.json({ error: "Analysis already exists" }, { status: 400 });
+    }
     // Call API to get exam result data
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_EDUQUIZ_API_URL}/quizexam/api/v1/exam-results/${id}`
@@ -58,7 +66,6 @@ export async function GET(
           orderBy: {
             createdAt: "desc",
           },
-          take: 5,
         });
         const examUnfinished = await getUnfinishedExams(
           createAnalysisDto.userId,
@@ -108,6 +115,7 @@ export async function GET(
         // Create analysis result
         const analysisResult: AnalysisResultDto = {
           userId: createAnalysisDto.userId,
+          examResultId: id,
           summary: {
             examName: createAnalysisDto.examName,
             subject: createAnalysisDto.subject,
@@ -147,6 +155,7 @@ export async function GET(
         await prisma.examAnalysis.create({
           data: {
             examId: createAnalysisDto.examId,
+            examResultId: id,
             userId: createAnalysisDto.userId,
             subjectId: createAnalysisDto.subjectId,
             subject: createAnalysisDto.subject,

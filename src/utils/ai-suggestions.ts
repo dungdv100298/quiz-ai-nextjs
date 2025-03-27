@@ -157,7 +157,7 @@ const getPrompt = (
       Chủ đề và % đúng trước đây:  ${historyQuestionLabels.length > 0 ? historyQuestionLabels
         .map(
           (examTopics, examIndex) =>
-            `   - Bài kiểm tra ${
+            `   - Lần kiểm tra${
               historyQuestionLabels.length - examIndex
             }: ${examTopics
               .map((topic) => `${topic.topic} ${topic.correctPercentage}%`)
@@ -191,7 +191,7 @@ const getPrompt = (
        + Lập kế hoạch học tập khoa học
     - timeAnalysisSuggestions:
       * NẾU có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): Phân tích xu hướng điểm số và thời gian trung bình.
-      * NẾU KHÔNG có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): đưa ra % chênh lệch thời gian từ input ( nhanh hay chập không đưa ra dữ liệu input), liệt kê chủ đề yếu xong nhận xét
+      * NẾU KHÔNG có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): đưa ra % chênh lệch thời gian từ input ( nhanh hay chập không đưa ra dữ liệu input, KHÔNG DÙNG TỪ CAO HƠN, THẤP HƠN MÀ DÙNG TỪ NHANH HƠN, CHẬM HƠN), liệt kê chủ đề yếu xong nhận xét
     - strengthsAnalysis:
       * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề mạnh và so sánh khác biệt về thời gian và % đúng với các lần thi trước ĐƯA RA CHỨNG CỨ CỤ THỂ THỐNG KÊ, TUYỆT ĐỐI KHÔNG LIỆT KÊ ĐIỂM MẠNH DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.
       * NẾU KHÔNG có lịch sử chủ đề trước: Nhận xét điểm mạnh (highlight chủ đề mạnh) TUYỆT ĐỐI KHÔNG LIỆT KÊ CHỦ ĐỀ DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.

@@ -10,6 +10,7 @@ datasource db {
 model ExamAnalysis {
   id              Int      @id @default(autoincrement())
   userId          String
+  examResultId    String
   examId          String
   examName        String
   subjectId       String

@@ -40,6 +40,7 @@ export interface CreateAnalysisDto {
 export interface AnalysisResultDto {
   id?: number;
   userId: string;
+  examResultId: string;
   summary: {
     examName: string;
     subject: string;
