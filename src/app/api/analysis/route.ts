@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
     const analysisResult = JSON.parse(JSON.stringify(result));
     return {
       id: analysisResult.id || 0,
+      examResultId: analysisResult.examResultId,
       userId: analysisResult.userId,
       summary: {
         examName: analysisResult.examName,

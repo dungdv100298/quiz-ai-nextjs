@@ -8,9 +8,12 @@ export async function GET(request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const examResult = await prisma.examAnalysis.findUnique({
+  const examResult = await prisma.examAnalysis.findFirst({
     where: {
-      id: parseInt(id),
+      OR: [
+        { id: parseInt(id) },
+        { examResultId: id }
+      ]
     },
   });
 
@@ -19,6 +22,7 @@ export async function GET(request: NextRequest,
 
   const analysisResult: AnalysisResultDto = {
     id: examResult?.id || 0,
+    examResultId: examResultJson?.id || "",
     userId: examResult?.userId || "",
     summary: {
       examName: examResult?.examName || "",
