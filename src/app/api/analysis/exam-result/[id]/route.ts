@@ -89,7 +89,7 @@ export async function GET(
           })) || [];
         const historyWorkingTime =
           examAnalysis?.map((item: any) => ({
-            workingTime: item.workingTime as number,
+            timeSpent: item.timeSpent as number,
             attemptNumber: item.attemptNumber as number,
           })) || [];
         const historyQuestionLabels = getHistoryQuestionLabels(examAnalysis);
@@ -97,10 +97,8 @@ export async function GET(
         const topicAnalysis = calculateTopicAnalysis(
           createAnalysisDto.questionLabels
         );
-        const averageSpeed =
-          createAnalysisDto.time / createAnalysisDto.totalQuestions;
-        const timeSpent =
-          createAnalysisDto.workingTime / (createAnalysisDto.totalQuestions - createAnalysisDto.emptyAnswers);
+        const averageSpeed = Number((createAnalysisDto.time / createAnalysisDto.totalQuestions).toFixed(2));
+        const timeSpent = Number((createAnalysisDto.workingTime / (createAnalysisDto.totalQuestions - createAnalysisDto.emptyAnswers)).toFixed(2));
 
         // Identify strengths and weaknesses
         const strengths = topicAnalysis
@@ -221,23 +219,16 @@ export async function GET(
   }
 }
 
-function getHistoryQuestionLabels(examAnalysis: any) {
-  try {
-    return (
-      examAnalysis?.map((item: any) => {
-        const text = item.topicAnalysis.map((topic: any) => {
-          return {
-            topic: topic.topic,
-            correctPercentage: topic.correctPercentage,
-            attemptNumber: item.attemptNumber,
-          };
-        }) as any;
-        return text;
-      }) || []
-    );
-  } catch {
-    return [];
+function getHistoryQuestionLabels(examAnalysis: any): string {
+  let historyQuestionString= ''
+  if (examAnalysis.length > 0) {
+    examAnalysis?.map((item: any) => {
+      historyQuestionString += ' Lần thi ' + item.attemptNumber + ': ' + item.topicAnalysis.map((topic: any) => {
+        return topic.topic + ' ' + topic.correctPercentage + '%';
+      }).join(', ');
+    })
   }
+  return historyQuestionString; 
 }
 
 function formatExamResult(inputData: any): CreateAnalysisDto {

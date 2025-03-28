@@ -3,7 +3,7 @@ import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 
 const RESPONSE_DEFAULT = {
-  inputTokens: 0, 
+  inputTokens: 0,
   outputTokens: 0,
   totalTokens: 0,
   inputCost: 0,
@@ -29,8 +29,8 @@ export async function generateAISuggestions(
   weaknesses: string[],
   topicAnalysis: TopicAnalysis[],
   historyScore: { score: number; attemptNumber: number }[],
-  historyWorkingTime: { workingTime: number; attemptNumber: number }[],
-  historyQuestionLabels: { topic: string; correctPercentage: number; attemptNumber: number }[][],
+  historyWorkingTime: { timeSpent: number; attemptNumber: number }[],
+  historyQuestionLabels: string,
   language: "vi" | "en" = "vi"
 ): Promise<{
   inputTokens: number;
@@ -45,7 +45,6 @@ export async function generateAISuggestions(
   timeAnalysisSuggestions: string;
 }> {
   try {
-
     const prompt = getPrompt(
       subject,
       score,
@@ -60,10 +59,11 @@ export async function generateAISuggestions(
       language
     );
     const result = await generateText({
-      model: google(process.env.NEXT_PUBLIC_MODEL_NAME || "gemini-1.5-pro-latest"),
+      model: google(
+        process.env.NEXT_PUBLIC_MODEL_NAME || "gemini-1.5-pro-latest"
+      ),
       prompt,
     });
-
     const response = result;
     const text = response.text;
     let parsedResponse;
@@ -121,19 +121,46 @@ const getPrompt = (
   weaknesses: string[],
   topicAnalysis: TopicAnalysis[],
   historyScore: { score: number; attemptNumber: number }[],
-  historyWorkingTime: { workingTime: number; attemptNumber: number }[],
-  historyQuestionLabels: { topic: string; correctPercentage: number; attemptNumber: number }[][],
+  historyWorkingTime: { timeSpent: number; attemptNumber: number }[],
+  historyQuestionLabels: string,
   language: "vi" | "en" = "vi"
 ): string => {
   const timeDifference = timeSpent - averageSpeed;
-  const timeDifferencePercentage = ((timeDifference / averageSpeed) * 100).toFixed(2);
-  const timeDifferencePercentageAbs = Math.abs(Number(timeDifferencePercentage));
-  const topicAndCorrectPercentageString = topicAnalysis.map((item) => `${item.topic} ${item.correctPercentage}%`).join(", ");
-  const historyScoreString = historyScore.map((item) => `Lần thi ${item.attemptNumber}: ${item.score}/10`).join(", ");
-  const historyWorkingTimeString = historyWorkingTime.map((item) => `Lần thi ${item.attemptNumber}: ${item.workingTime}s`).join(", ");
-  const historyQuestionLabelsString = historyQuestionLabels.map((item, index) => {
-    return `Lần ${index + 1}: ${item.map((topic) => `${topic.topic} ${topic.correctPercentage}%`).join(", ")}`;
-  }).join(", ") + ', Lần hiện tại: ' + topicAndCorrectPercentageString;
+  const timeDifferencePercentage = (
+    (timeDifference / averageSpeed) *
+    100
+  ).toFixed(2);
+  const timeDifferencePercentageAbs = Math.abs(
+    Number(timeDifferencePercentage)
+  );
+  const topicAndCorrectPercentageString = topicAnalysis
+    .map((item) => `${item.topic} ${item.correctPercentage}%`)
+    .join(", ");
+  const historyScoreString = historyScore
+    .map((item) => `Lần thi ${item.attemptNumber}: ${item.score}/10`)
+    .join(", ");
+  const historyWorkingTimeString = historyWorkingTime
+    .map((item) => `Lần thi ${item.attemptNumber}: ${item.timeSpent}s`)
+    .join(", ");
+  const historyQuestionLabelsString =
+    historyQuestionLabels +
+    ", Lần hiện tại: " +
+    topicAndCorrectPercentageString;
+
+  const timeAnalysisSuggestionsRules =
+    historyWorkingTime.length > 0
+      ? 'Đưa ra % chênh lệch thời gian từ input (đánh giá nhanh hay chậm). Phân tích xu hướng thời gian làm bài của bạn trên câu với lần nhanh nhất và lần chậm nhất'
+      : 'Đưa ra % chênh lệch thời gian từ input (đánh giá nhanh hay chậm). liệt kê chủ đề yếu xong nhận xét';
+
+  const strengthsAnalysisRules =
+    historyQuestionLabels.length > 0
+      ? 'Liệt kê chi tiết từng chủ đề mạnh và đánh giá xu hướng LẦN HIỆN TẠI VỚI LẦN THI THẤP NHẤT VÀ CAO NHẤT. ĐƯA RA DẪN CHỨNG CỤ THỂ VỀ LẦN THI VÀ % ĐÚNG, TUYỆT ĐỐI KHÔNG LIỆT KÊ ĐIỂM MẠNH DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ'
+      : 'Nhận xét điểm mạnh (highlight chủ đề mạnh) TUYỆT ĐỐI KHÔNG LIỆT KÊ CHỦ ĐỀ DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.';
+
+  const weaknessesAnalysisRules =
+    historyQuestionLabels.length > 0
+      ? 'Liệt kê chi tiết từng chủ đề yếu và đánh giá xu hướng LẦN HIỆN TẠI VỚI LẦN THI THẤP NHẤT VÀ CAO NHẤT. ĐƯA RA DẪN CHỨNG CỤ THỂ VỀ LẦN THI VÀ % ĐÚNG, TUYỆT ĐỐI KHÔNG LIỆT KÊ ĐIỂM YẾU DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ'
+      : 'Chỉ đưa ra tổng số chủ đề yếu từ input và nhận xét tổng quát, TUYỆT ĐỐI KHÔNG liệt kê từng chủ đề yếu cụ thể.';
 
   if (language === "vi") {
     const promptVi = `
@@ -142,17 +169,17 @@ const getPrompt = (
     Dữ liệu đầu vào:
       Môn học: ${subject}
       Điểm: ${score}/10
-      Tốc độ trung bình bài thi: ${averageSpeed}s/câu
-      Tốc độ của bạn: ${timeSpent}s
+      Tốc độ trung bình làm mỗi câu: ${averageSpeed}s/câu
+      Tốc độ trung bình làm mỗi câu của bạn (lần thi hiên tại): ${timeSpent}s/câu
       % chênh lệch thời gian: ${timeDifferencePercentageAbs}%
       Điểm mạnh: ${strengths.length > 0 ? strengths.join(", ") : "Không có"}
       Điểm yếu: ${weaknesses.length > 0 ? weaknesses.join(", ") : "Không có"}
       Tổng số chủ đề yếu: ${weaknesses.length}
       Nguồn học tập và thực hành: 'EduQuiz Study'
-      Chủ đề và % đúng: ${topicAndCorrectPercentageString}
-      Điểm số trước: ${historyScoreString}
-      Thời gian làm bài trước: ${historyWorkingTimeString}
-      Chủ đề và % đúng trước đây: ${historyQuestionLabelsString}
+      ${ historyQuestionLabels.length > 0 ? '' : 'Chủ đề và % đúng: ' + topicAndCorrectPercentageString }
+      ${historyScore.length > 0 ? 'Điểm số trước: ' + historyScoreString : ''}
+      ${historyWorkingTime.length > 0 ? 'Tốc độ trung bình làm mỗi câu của các bài thi trước: ' + historyWorkingTimeString : ''}
+      ${ historyQuestionLabels.length > 0 ? 'Chủ đề và % đúng trước đây: ' + historyQuestionLabelsString : ''}
 
     Trả về JSON hợp lệ với định dạng sau:
     {
@@ -167,9 +194,11 @@ const getPrompt = (
     Hướng dẫn:
     - Viết bằng tiếng Việt, sử dụng Markdown (##, danh sách, **bold**, *italic*)
     - Đảm bảo JSON hợp lệ, tránh lỗi parsing
-    - Dữ liệu lịch sử là dữ liệu được lấy từ input Điểm số trước, Chủ đề và % đúng trước đây và Thời gian làm bài trước
     - Chủ đề dưới 80% đúng: là yếu
     - Chủ đề trên 80% đúng: là mạnh
+    - giá trị Tốc độ trung bình của một câu CÀNG THẤP LÀ CÀNG NHANH, CÀNG CAO LÀ CÀNG CHẬM ví dụ: 10s/câu là nhanh hơn 20s/câu
+    - Chủ đề và % đúng: Giá trị cao hơn là cải thiện/tiến bộ, giá trị thấp hơn là giảm/cần cải thiện ví dụ: Lần 1: 20 % đúng, Lần 2: 50% => Đang cải thiện. Lần 1: 50%, Lần 2: 20% => Đang giảm, chưa lắm vững kiến thức
+    - Thời gian trung bình của một câu CÀNG THẤP LÀ CÀNG NHANH, CÀNG CAO LÀ CÀNG CHẬM
     - KHÔNG DÙNG TỪ "ĐIỂM YẾU" MÀ THAY VÀO LÀ "ĐIỂM CẦN CẢI THIỆN"
     - KHÔNG DÙNG TỪ "EM" MÀ THAY VÀO LÀ "BẠN"
 
@@ -179,15 +208,9 @@ const getPrompt = (
        + Phương pháp học tập hiệu quả
        + Luyện tập thực tế củng cố kiến thức
        + Lập kế hoạch học tập khoa học
-    - timeAnalysisSuggestions:
-      * NẾU có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): Phân tích xu hướng điểm số và thời gian trung bình.
-      * NẾU KHÔNG có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): đưa ra % chênh lệch thời gian từ input ( nhanh hay chập không đưa ra dữ liệu input, KHÔNG DÙNG TỪ CAO HƠN, THẤP HƠN MÀ DÙNG TỪ NHANH HƠN, CHẬM HƠN), liệt kê chủ đề yếu xong nhận xét
-    - strengthsAnalysis:
-      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề mạnh và so sánh khác biệt về thời gian và % đúng với các LẦN THI THẤP NHẤT VÀ CAO NHẤT. ĐƯA RA CHỨNG CỨ CỤ THỂ THỐNG KÊ, TUYỆT ĐỐI KHÔNG LIỆT KÊ ĐIỂM MẠNH DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.
-      * NẾU KHÔNG có lịch sử chủ đề trước: Nhận xét điểm mạnh (highlight chủ đề mạnh) TUYỆT ĐỐI KHÔNG LIỆT KÊ CHỦ ĐỀ DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.
-    - weaknessesAnalysis:
-      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề yếu và so sánh khác biệt về thời gian và % đúng với các LẦN THI THẤP NHẤT VÀ CAO NHẤT. ĐƯA RA CHỨNG CỨ CỤ THỂ, TUYỆT ĐỐI KHÔNG LIỆT KÊ QUÁ 3 CHỦ ĐỀ YẾU.
-      * NẾU KHÔNG có lịch sử chủ đề trước: CHỈ đưa ra tổng số Tổng số chủ đề yếu từ input và nhận xét tổng quát, TUYỆT ĐỐI KHÔNG liệt kê từng chủ đề yếu cụ thể.
+    - timeAnalysisSuggestions: ${timeAnalysisSuggestionsRules}
+    - strengthsAnalysis: ${strengthsAnalysisRules}
+    - weaknessesAnalysis: ${weaknessesAnalysisRules}
   `;
     return promptVi;
   } else {
@@ -218,11 +241,7 @@ const getPrompt = (
         ? historyWorkingTime.join(", ")
         : "No previous working times"
     }
-    Previous topic analysis: ${
-      historyQuestionLabels.length > 0
-        ? historyQuestionLabels.join(", ")
-        : "No previous topic analysis"
-    }
+    Previous topic analysis: ${historyQuestionLabels}
 
     Recommendations needed:
 
