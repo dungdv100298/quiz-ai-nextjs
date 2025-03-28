@@ -30,6 +30,7 @@ model ExamAnalysis {
   emptyAnswers    Float
   correctAnswers  Float
   wrongAnswers    Float
+  attemptNumber   Int
   strengths       Json?
   weaknesses      Json?
   examUnfinished       Json?

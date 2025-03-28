@@ -66,7 +66,14 @@ export async function GET(
           orderBy: {
             createdAt: "desc",
           },
+          take: 5,
         });
+        const totalAttempt = await prisma.examAnalysis.count({
+          where: {
+            userId: createAnalysisDto.userId,
+            examId: createAnalysisDto.examId,
+          }
+        }) || 0;
         const examUnfinished = await getUnfinishedExams(
           createAnalysisDto.userId,
           createAnalysisDto.subjectId
@@ -76,9 +83,15 @@ export async function GET(
           createAnalysisDto.subjectId
         );
         const historyScore =
-          examAnalysis?.map((item: any) => item.score as number) || [];
+          examAnalysis?.map((item: any) => ({
+            score: item.score as number,
+            attemptNumber: item.attemptNumber as number,
+          })) || [];
         const historyWorkingTime =
-          examAnalysis?.map((item: any) => item.workingTime as number) || [];
+          examAnalysis?.map((item: any) => ({
+            workingTime: item.workingTime as number,
+            attemptNumber: item.attemptNumber as number,
+          })) || [];
         const historyQuestionLabels = getHistoryQuestionLabels(examAnalysis);
         // Calculate topic analysis
         const topicAnalysis = calculateTopicAnalysis(
@@ -87,7 +100,7 @@ export async function GET(
         const averageSpeed =
           createAnalysisDto.time / createAnalysisDto.totalQuestions;
         const timeSpent =
-          createAnalysisDto.workingTime / createAnalysisDto.totalQuestions;
+          createAnalysisDto.workingTime / (createAnalysisDto.totalQuestions - createAnalysisDto.emptyAnswers);
 
         // Identify strengths and weaknesses
         const strengths = topicAnalysis
@@ -172,6 +185,7 @@ export async function GET(
             outputCost: aiSuggestions.outputCost,
             totalCost: aiSuggestions.totalCost,
             totalQuestions: createAnalysisDto.totalQuestions,
+            attemptNumber: totalAttempt + 1,
             emptyAnswers: createAnalysisDto.emptyAnswers,
             correctAnswers: createAnalysisDto.correctAnswers,
             wrongAnswers: createAnalysisDto.wrongAnswers,
@@ -215,6 +229,7 @@ function getHistoryQuestionLabels(examAnalysis: any) {
           return {
             topic: topic.topic,
             correctPercentage: topic.correctPercentage,
+            attemptNumber: item.attemptNumber,
           };
         }) as any;
         return text;
