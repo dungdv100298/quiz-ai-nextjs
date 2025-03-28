@@ -28,9 +28,9 @@ export async function generateAISuggestions(
   strengths: string[],
   weaknesses: string[],
   topicAnalysis: TopicAnalysis[],
-  historyScore: number[],
-  historyWorkingTime: number[],
-  historyQuestionLabels: { topic: string; correctPercentage: number }[][],
+  historyScore: { score: number; attemptNumber: number }[],
+  historyWorkingTime: { workingTime: number; attemptNumber: number }[],
+  historyQuestionLabels: { topic: string; correctPercentage: number; attemptNumber: number }[][],
   language: "vi" | "en" = "vi"
 ): Promise<{
   inputTokens: number;
@@ -45,6 +45,7 @@ export async function generateAISuggestions(
   timeAnalysisSuggestions: string;
 }> {
   try {
+
     const prompt = getPrompt(
       subject,
       score,
@@ -119,15 +120,20 @@ const getPrompt = (
   strengths: string[],
   weaknesses: string[],
   topicAnalysis: TopicAnalysis[],
-  historyScore: number[],
-  historyWorkingTime: number[],
-  historyQuestionLabels: { topic: string; correctPercentage: number }[][],
+  historyScore: { score: number; attemptNumber: number }[],
+  historyWorkingTime: { workingTime: number; attemptNumber: number }[],
+  historyQuestionLabels: { topic: string; correctPercentage: number; attemptNumber: number }[][],
   language: "vi" | "en" = "vi"
 ): string => {
   const timeDifference = timeSpent - averageSpeed;
   const timeDifferencePercentage = ((timeDifference / averageSpeed) * 100).toFixed(2);
   const timeDifferencePercentageAbs = Math.abs(Number(timeDifferencePercentage));
-
+  const topicAndCorrectPercentageString = topicAnalysis.map((item) => `${item.topic} ${item.correctPercentage}%`).join(", ");
+  const historyScoreString = historyScore.map((item) => `Lần thi ${item.attemptNumber}: ${item.score}/10`).join(", ");
+  const historyWorkingTimeString = historyWorkingTime.map((item) => `Lần thi ${item.attemptNumber}: ${item.workingTime}s`).join(", ");
+  const historyQuestionLabelsString = historyQuestionLabels.map((item, index) => {
+    return `Lần ${index + 1}: ${item.map((topic) => `${topic.topic} ${topic.correctPercentage}%`).join(", ")}`;
+  }).join(", ") + ', Lần hiện tại: ' + topicAndCorrectPercentageString;
 
   if (language === "vi") {
     const promptVi = `
@@ -143,27 +149,11 @@ const getPrompt = (
       Điểm yếu: ${weaknesses.length > 0 ? weaknesses.join(", ") : "Không có"}
       Tổng số chủ đề yếu: ${weaknesses.length}
       Nguồn học tập và thực hành: 'EduQuiz Study'
-      Chủ đề và % đúng: ${topicAnalysis
-        .map((t) => `${t.topic} ${t.correctPercentage}%`)
-        .join(", ")}
-      Điểm số trước: ${
-        historyScore.length > 0 ? historyScore.join(", ") : "Không có"
-      }
-      Thời gian làm bài trước: ${
-        historyWorkingTime.length > 0
-          ? historyWorkingTime.join(", ")
-          : "Không có"
-      }
-      Chủ đề và % đúng trước đây:  ${historyQuestionLabels.length > 0 ? historyQuestionLabels
-        .map(
-          (examTopics, examIndex) =>
-            `   - Lần kiểm tra${
-              historyQuestionLabels.length - examIndex
-            }: ${examTopics
-              .map((topic) => `${topic.topic} ${topic.correctPercentage}%`)
-              .join(", ")}`
-        )
-        .join("\n"): "Không có"}
+      Chủ đề và % đúng: ${topicAndCorrectPercentageString}
+      Điểm số trước: ${historyScoreString}
+      Thời gian làm bài trước: ${historyWorkingTimeString}
+      Chủ đề và % đúng trước đây: ${historyQuestionLabelsString}
+
     Trả về JSON hợp lệ với định dạng sau:
     {
       // Định dạng output mong muốn:
@@ -193,10 +183,10 @@ const getPrompt = (
       * NẾU có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): Phân tích xu hướng điểm số và thời gian trung bình.
       * NẾU KHÔNG có lịch sử thời gian làm bài (Thời gian làm bài trước từ input): đưa ra % chênh lệch thời gian từ input ( nhanh hay chập không đưa ra dữ liệu input, KHÔNG DÙNG TỪ CAO HƠN, THẤP HƠN MÀ DÙNG TỪ NHANH HƠN, CHẬM HƠN), liệt kê chủ đề yếu xong nhận xét
     - strengthsAnalysis:
-      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề mạnh và so sánh khác biệt về thời gian và % đúng với các lần thi trước ĐƯA RA CHỨNG CỨ CỤ THỂ THỐNG KÊ, TUYỆT ĐỐI KHÔNG LIỆT KÊ ĐIỂM MẠNH DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.
+      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề mạnh và so sánh khác biệt về thời gian và % đúng với các LẦN THI THẤP NHẤT VÀ CAO NHẤT. ĐƯA RA CHỨNG CỨ CỤ THỂ THỐNG KÊ, TUYỆT ĐỐI KHÔNG LIỆT KÊ ĐIỂM MẠNH DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.
       * NẾU KHÔNG có lịch sử chủ đề trước: Nhận xét điểm mạnh (highlight chủ đề mạnh) TUYỆT ĐỐI KHÔNG LIỆT KÊ CHỦ ĐỀ DƯỚI 80% ĐÚNG VÀ QUÁ 3 CHỦ ĐỀ.
     - weaknessesAnalysis:
-      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề yếu và so sánh khác biệt về thời gian và % đúng với các lần thi trước ĐƯA RA CHỨNG CỨ CỤ THỂ, TUYỆT ĐỐI KHÔNG LIỆT KÊ QUÁ 3 CHỦ ĐỀ YẾU.
+      * NẾU có lịch sử chủ đề trước (Chủ đề và % đúng trước đây từ input): Liệt kê chi tiết từng chủ đề yếu và so sánh khác biệt về thời gian và % đúng với các LẦN THI THẤP NHẤT VÀ CAO NHẤT. ĐƯA RA CHỨNG CỨ CỤ THỂ, TUYỆT ĐỐI KHÔNG LIỆT KÊ QUÁ 3 CHỦ ĐỀ YẾU.
       * NẾU KHÔNG có lịch sử chủ đề trước: CHỈ đưa ra tổng số Tổng số chủ đề yếu từ input và nhận xét tổng quát, TUYỆT ĐỐI KHÔNG liệt kê từng chủ đề yếu cụ thể.
   `;
     return promptVi;
